@@ -52,6 +52,14 @@ const userSchema = new mongoose.Schema(
 			type: String,
 			default: "",
 		},
+		mutedUsers: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
+		blockedUsers: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
+		mutedWords: [{ type: String }],
+		followedTopics: [{ type: String }],
+		settings: {
+			whoCanMessage: { type: String, enum: ["everyone", "following", "nobody"], default: "everyone" },
+			whoCanReply: { type: String, enum: ["everyone", "following", "nobody"], default: "everyone" },
+		},
 		bookmarks: [
 			{
 				type: mongoose.Schema.Types.ObjectId,

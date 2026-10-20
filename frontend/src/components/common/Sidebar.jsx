@@ -1,9 +1,9 @@
 import Logo from "../svgs/Logo";
 
 import { MdHomeFilled } from "react-icons/md";
-import { IoNotifications, IoMail, IoSearch } from "react-icons/io5";
+import { IoNotifications, IoMail, IoSearch, IoSettingsSharp } from "react-icons/io5";
 import { FaUser, FaBookmark } from "react-icons/fa";
-import { Link } from "react-router-dom";
+import { Link, NavLink, useLocation } from "react-router-dom";
 import { BiLogOut } from "react-icons/bi";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
@@ -56,9 +56,23 @@ const Sidebar = () => {
 		enabled: !!authUser,
 	});
 
+	const { pathname } = useLocation();
+	const inChat = pathname.startsWith("/messages/"); // the chat needs the whole screen on phones
+
+	const Badge = ({ count }) =>
+		count > 0 ? (
+			<span className='absolute -top-2 -right-2 bg-sky-500 text-white text-[10px] font-bold rounded-full min-w-4 h-4 px-1 flex items-center justify-center'>
+				{count > 99 ? "99+" : count}
+			</span>
+		) : null;
+
+	const tabClass = ({ isActive }) =>
+		`relative flex flex-col items-center justify-center flex-1 py-1 ${isActive ? "text-white" : "text-slate-500"}`;
+
 	return (
-		<div className='md:flex-[2_2_0] w-18 max-w-52'>
-			<div className='sticky top-0 left-0 h-screen flex flex-col border-r border-gray-700 w-20 md:w-full'>
+		<>
+		<div className='hidden md:block md:flex-[2_2_0] max-w-52'>
+			<div className='sticky top-0 left-0 h-screen flex flex-col border-r border-gray-700 w-full'>
 				<Link to='/' className='flex justify-center md:justify-start'>
 					<Logo className='px-2 w-12 h-12 rounded-full text-white hover:bg-stone-900' />
 				</Link>
@@ -127,6 +141,16 @@ const Sidebar = () => {
 
 					<li className='flex justify-center md:justify-start'>
 						<Link
+							to='/settings'
+							className='flex gap-3 items-center hover:bg-stone-900 transition-all rounded-full duration-300 py-2 pl-2 pr-4 max-w-fit cursor-pointer'
+						>
+							<IoSettingsSharp className='w-6 h-6' />
+							<span className='text-lg hidden md:block'>Settings</span>
+						</Link>
+					</li>
+
+					<li className='flex justify-center md:justify-start'>
+						<Link
 							to={`/profile/${authUser?.username}`}
 							className='flex gap-3 items-center hover:bg-stone-900 transition-all rounded-full duration-300 py-2 pl-2 pr-4 max-w-fit cursor-pointer'
 						>
@@ -162,6 +186,37 @@ const Sidebar = () => {
 				)}
 			</div>
 		</div>
+
+		{/* phone navigation bar */}
+		{!inChat && (
+			<nav
+				className='md:hidden fixed bottom-0 inset-x-0 z-40 flex items-stretch border-t border-gray-700 bg-base-100 pb-[env(safe-area-inset-bottom)]'
+				aria-label='Main navigation'
+			>
+				<NavLink to='/' end className={tabClass} aria-label='Home'>
+					<MdHomeFilled className='w-7 h-7' />
+				</NavLink>
+				<NavLink to='/search' className={tabClass} aria-label='Search'>
+					<IoSearch className='w-6 h-6' />
+				</NavLink>
+				<NavLink to='/messages' className={tabClass} aria-label='Messages'>
+					<span className='relative'>
+						<IoMail className='w-6 h-6' />
+						<Badge count={unread} />
+					</span>
+				</NavLink>
+				<NavLink to='/notifications' className={tabClass} aria-label='Notifications'>
+					<span className='relative'>
+						<IoNotifications className='w-6 h-6' />
+						<Badge count={unreadNotifications} />
+					</span>
+				</NavLink>
+				<NavLink to={`/profile/${authUser?.username}`} className={tabClass} aria-label='Profile'>
+					<FaUser className='w-5 h-5' />
+				</NavLink>
+			</nav>
+		)}
+		</>
 	);
 };
 export default Sidebar;

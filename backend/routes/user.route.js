@@ -1,11 +1,23 @@
 import express from "express";
 import { protectRoute } from "../middleware/protectRoute.js";
+import {
+	blockUnblockUser,
+	getSafety,
+	muteUnmuteUser,
+	updateMutedWords,
+	updatePrivacySettings,
+} from "../controllers/safety.controller.js";
 import { followUnfollowUser, getSuggestedUsers, getUserProfile, searchUsers, updateUser } from "../controllers/user.controller.js";
 
 const router = express.Router();
 
 router.get("/profile/:username", protectRoute, getUserProfile);
 router.get("/search", protectRoute, searchUsers);
+router.get("/safety", protectRoute, getSafety);
+router.post("/safety/muted-words", protectRoute, updateMutedWords);
+router.post("/safety/privacy", protectRoute, updatePrivacySettings);
+router.post("/mute/:id", protectRoute, muteUnmuteUser);
+router.post("/block/:id", protectRoute, blockUnblockUser);
 router.get("/suggested", protectRoute, getSuggestedUsers);
 router.post("/follow/:id", protectRoute, followUnfollowUser);
 router.post("/update", protectRoute, updateUser);

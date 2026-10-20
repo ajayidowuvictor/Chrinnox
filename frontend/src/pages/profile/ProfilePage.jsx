@@ -16,6 +16,8 @@ import { formatMemberSinceDate } from "../../utils/date";
 
 import useFollow from "../../hooks/useFollow";
 import useUpdateUserProfile from "../../hooks/useUpdateUserProfile";
+import useSafetyActions from "../../hooks/useSafetyActions";
+import { IoEllipsisHorizontal } from "react-icons/io5";
 
 const ProfilePage = () => {
 	const [coverImg, setCoverImg] = useState(null);
@@ -28,6 +30,7 @@ const ProfilePage = () => {
 	const { username } = useParams();
 
 	const { follow, isPending } = useFollow();
+	const { toggleMute, toggleBlock } = useSafetyActions();
 	const { data: authUser } = useQuery({ queryKey: ["authUser"] });
 
 	const {
@@ -137,7 +140,52 @@ const ProfilePage = () => {
 								</div>
 							</div>
 							<div className='flex justify-end px-4 mt-5'>
+								{isMyProfile && (
+									<Link to='/bookmarks' className='btn btn-outline rounded-full btn-sm mr-2'>
+										Saved
+									</Link>
+								)}
+								{isMyProfile && (
+									<Link to='/settings' className='btn btn-outline rounded-full btn-sm mr-2'>
+										Settings
+									</Link>
+								)}
 								{isMyProfile && <EditProfileModal authUser={authUser} />}
+								{!isMyProfile && (
+									<div className='dropdown dropdown-end mr-2'>
+										<button tabIndex={0} className='btn btn-outline rounded-full btn-sm' aria-label='More options'>
+											<IoEllipsisHorizontal className='w-4 h-4' />
+										</button>
+										<ul
+											tabIndex={0}
+											className='dropdown-content z-[1] menu p-2 shadow bg-base-100 rounded-box w-56 border border-gray-700'
+										>
+											<li>
+												<a
+													onClick={() => {
+														document.activeElement?.blur();
+														toggleMute(user?._id);
+													}}
+												>
+													{authUser.mutedUsers?.includes(user?._id) ? "Unmute" : "Mute"} @{user?.username}
+												</a>
+											</li>
+											<li>
+												<a
+													onClick={() => {
+														document.activeElement?.blur();
+														if (authUser.blockedUsers?.includes(user?._id)) return toggleBlock(user?._id);
+														if (window.confirm(`Block @${user?.username}? They won't be able to follow, message or reply to you.`)) {
+															toggleBlock(user?._id);
+														}
+													}}
+												>
+													{authUser.blockedUsers?.includes(user?._id) ? "Unblock" : "Block"} @{user?.username}
+												</a>
+											</li>
+										</ul>
+									</div>
+								)}
 								{!isMyProfile && (
 									<Link to={`/messages/${user?.username}`} className='btn btn-outline rounded-full btn-sm mr-2'>
 										Message

@@ -1,5 +1,6 @@
 import Message from "../models/message.model.js";
 import Post from "../models/post.model.js";
+import { isBlockedBetween } from "../lib/utils/relations.js";
 import { findUserByUsername } from "../lib/utils/findUser.js";
 import { v2 as cloudinary } from "cloudinary";
 import mongoose from "mongoose";
@@ -85,9 +86,20 @@ export const sendMessage = async (req, res) => {
 		if (!text && !img && !postId) return res.status(400).json({ error: "Message cannot be empty" });
 		if (text.length > 1000) return res.status(400).json({ error: "Message is too long (max 1000 characters)" });
 
-		const other = await findUserByUsername(req.params.username).select("_id");
+		const other = await findUserByUsername(req.params.username).select("_id settings following");
 		if (!other) return res.status(404).json({ error: "User not found" });
 		if (other._id.equals(me)) return res.status(400).json({ error: "You can't message yourself" });
+
+		if (await isBlockedBetween(me, other._id)) {
+			return res.status(403).json({ error: "You can't message this person" });
+		}
+		const policy = other.settings?.whoCanMessage || "everyone";
+		if (policy === "nobody") {
+			return res.status(403).json({ error: "This person isn't accepting messages" });
+		}
+		if (policy === "following" && !other.following.some((id) => id.equals(me))) {
+			return res.status(403).json({ error: "This person only accepts messages from people they follow" });
+		}
 
 		if (img) {
 			if (typeof img !== "string" || !img.startsWith("data:image/")) {

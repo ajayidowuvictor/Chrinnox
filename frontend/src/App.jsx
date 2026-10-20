@@ -1,4 +1,4 @@
-import { Navigate, Route, Routes } from "react-router-dom";
+import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 
 import HomePage from "./pages/home/HomePage";
 import LoginPage from "./pages/auth/login/LoginPage";
@@ -9,6 +9,7 @@ import BookmarksPage from "./pages/bookmarks/BookmarksPage";
 import MessagesPage from "./pages/messages/MessagesPage";
 import PostPage from "./pages/post/PostPage";
 import SearchPage from "./pages/search/SearchPage";
+import SettingsPage from "./pages/settings/SettingsPage";
 
 import Sidebar from "./components/common/Sidebar";
 import RightPanel from "./components/common/RightPanel";
@@ -18,6 +19,7 @@ import { useQuery } from "@tanstack/react-query";
 import LoadingSpinner from "./components/common/LoadingSpinner";
 
 function App() {
+	const { pathname } = useLocation();
 	const { data: authUser, isLoading } = useQuery({
 		// we use queryKey to give a unique name to our query and refer to it later
 		queryKey: ["authUser"],
@@ -47,7 +49,7 @@ function App() {
 	}
 
 	return (
-		<div className='flex max-w-6xl mx-auto'>
+		<div className={`flex max-w-6xl mx-auto ${pathname.startsWith("/messages/") ? "" : "pb-16 md:pb-0"}`}>
 			{/* Common component, bc it's not wrapped with Routes */}
 			{authUser && <Sidebar />}
 			<Routes>
@@ -56,6 +58,7 @@ function App() {
 				<Route path='/signup' element={!authUser ? <SignUpPage /> : <Navigate to='/' />} />
 				<Route path='/notifications' element={authUser ? <NotificationPage /> : <Navigate to='/login' />} />
 				<Route path='/post/:id' element={authUser ? <PostPage /> : <Navigate to='/login' />} />
+				<Route path='/settings' element={authUser ? <SettingsPage /> : <Navigate to='/login' />} />
 				<Route path='/search' element={authUser ? <SearchPage /> : <Navigate to='/login' />} />
 				<Route path='/bookmarks' element={authUser ? <BookmarksPage /> : <Navigate to='/login' />} />
 				<Route path='/messages' element={authUser ? <MessagesPage /> : <Navigate to='/login' />} />

@@ -281,7 +281,7 @@ const Chat = ({ username }) => {
 	const other = data.user;
 
 	return (
-		<div className='flex flex-col h-screen'>
+		<div className='flex flex-col h-[100dvh]'>
 			<div className='flex gap-3 items-center p-4 border-b border-gray-700'>
 				<Link to='/messages'>
 					<FaArrowLeft className='w-4 h-4' />

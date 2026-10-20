@@ -2,6 +2,7 @@ import { FaRegComment } from "react-icons/fa";
 import { BiRepost } from "react-icons/bi";
 import { FaRegHeart } from "react-icons/fa";
 import { FaRegBookmark, FaBookmark, FaShareNodes } from "react-icons/fa6";
+import { IoEllipsisHorizontal } from "react-icons/io5";
 import { FaTrash } from "react-icons/fa";
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
@@ -10,12 +11,14 @@ import { toast } from "react-hot-toast";
 
 import LoadingSpinner from "./LoadingSpinner";
 import { formatPostDate } from "../../utils/date";
+import useSafetyActions from "../../hooks/useSafetyActions";
 
 const Post = ({ post }) => {
 	const [comment, setComment] = useState("");
 	const { data: authUser } = useQuery({ queryKey: ["authUser"] });
 	const queryClient = useQueryClient();
 	const navigate = useNavigate();
+	const { toggleMute, toggleBlock } = useSafetyActions();
 	const postOwner = post.user;
 	const isLiked = post.likes.includes(authUser._id);
 	const isReposted = (post.reposts || []).includes(authUser._id);
@@ -228,6 +231,40 @@ const Post = ({ post }) => {
 								{formattedDate}
 							</Link>
 						</span>
+						{!isMyPost && (
+							<div className='dropdown dropdown-end flex justify-end flex-1'>
+								<button tabIndex={0} aria-label='More options'>
+									<IoEllipsisHorizontal className='w-5 h-5 text-slate-500 hover:text-white' />
+								</button>
+								<ul
+									tabIndex={0}
+									className='dropdown-content z-[1] menu p-2 shadow bg-base-100 rounded-box w-56 border border-gray-700 mt-6'
+								>
+									<li>
+										<a
+											onClick={() => {
+												document.activeElement?.blur();
+												toggleMute(postOwner._id);
+											}}
+										>
+											Mute @{postOwner.username}
+										</a>
+									</li>
+									<li>
+										<a
+											onClick={() => {
+												document.activeElement?.blur();
+												if (window.confirm(`Block @${postOwner.username}? They won't be able to follow, message or reply to you.`)) {
+													toggleBlock(postOwner._id);
+												}
+											}}
+										>
+											Block @{postOwner.username}
+										</a>
+									</li>
+								</ul>
+							</div>
+						)}
 						{isMyPost && (
 							<span className='flex justify-end flex-1'>
 								{!isDeleting && (

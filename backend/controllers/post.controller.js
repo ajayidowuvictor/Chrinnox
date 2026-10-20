@@ -2,6 +2,7 @@ import Notification from "../models/notification.model.js";
 import Post from "../models/post.model.js";
 import User from "../models/user.model.js";
 import { findUserByUsername } from "../lib/utils/findUser.js";
+import { isBlockedBetween, buildFeedFilter } from "../lib/utils/relations.js";
 import { v2 as cloudinary } from "cloudinary";
 import mongoose from "mongoose";
 
@@ -110,6 +111,21 @@ export const commentOnPost = async (req, res) => {
 			return res.status(404).json({ error: "Post not found" });
 		}
 
+		// the post author decides who may reply (enforced here, never on the client)
+		if (post.user.toString() !== userId.toString()) {
+			if (await isBlockedBetween(userId, post.user)) {
+				return res.status(403).json({ error: "You can't reply to this post" });
+			}
+			const author = await User.findById(post.user).select("settings following");
+			const policy = author?.settings?.whoCanReply || "everyone";
+			if (policy === "nobody") {
+				return res.status(403).json({ error: "The author has turned replies off for this post" });
+			}
+			if (policy === "following" && !author.following.some((id) => id.equals(userId))) {
+				return res.status(403).json({ error: "Only people the author follows can reply" });
+			}
+		}
+
 		const comment = { user: userId, text: text.trim() };
 
 		post.comments.push(comment);
@@ -176,7 +192,7 @@ export const likeUnlikePost = async (req, res) => {
 
 export const getAllPosts = async (req, res) => {
 	try {
-		const posts = await Post.find()
+		const posts = await Post.find(await buildFeedFilter(req.user._id))
 			.sort({ createdAt: -1 })
 			.limit(FEED_LIMIT)
 			.populate({
@@ -231,7 +247,10 @@ export const getFollowingPosts = async (req, res) => {
 
 		const following = user.following;
 
-		const feedPosts = await Post.find({ $or: [{ user: { $in: following } }, { reposts: { $in: following } }] })
+		const feedFilter = await buildFeedFilter(userId);
+		const feedPosts = await Post.find({
+			$and: [{ $or: [{ user: { $in: following } }, { reposts: { $in: following } }] }, feedFilter],
+		})
 			.sort({ createdAt: -1 })
 			.limit(FEED_LIMIT)
 			.populate({

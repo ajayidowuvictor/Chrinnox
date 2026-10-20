@@ -5,6 +5,7 @@ import { v2 as cloudinary } from "cloudinary";
 import Notification from "../models/notification.model.js";
 import User from "../models/user.model.js";
 import { findUserByUsername, escapeRegex } from "../lib/utils/findUser.js";
+import { isBlockedBetween, getHiddenUserIds } from "../lib/utils/relations.js";
 
 export const getUserProfile = async (req, res) => {
 	const { username } = req.params;
@@ -31,6 +32,10 @@ export const followUnfollowUser = async (req, res) => {
 		}
 
 		if (!userToModify || !currentUser) return res.status(400).json({ error: "User not found" });
+
+		if (await isBlockedBetween(req.user._id, id)) {
+			return res.status(403).json({ error: "You can't follow this account" });
+		}
 
 		const isFollowing = currentUser.following.includes(id);
 
@@ -66,11 +71,12 @@ export const getSuggestedUsers = async (req, res) => {
 		const userId = req.user._id;
 
 		const usersFollowedByMe = await User.findById(userId).select("following");
+		const hiddenIds = await getHiddenUserIds(userId);
 
 		const users = await User.aggregate([
 			{
 				$match: {
-					_id: { $ne: userId },
+					_id: { $ne: userId, $nin: hiddenIds },
 				},
 			},
 			{ $sample: { size: 10 } },
@@ -95,8 +101,12 @@ export const searchUsers = async (req, res) => {
 		if (q.length < 1) return res.status(200).json([]);
 
 		const regex = new RegExp(escapeRegex(q), "i");
+		const me = await User.findById(req.user._id).select("blockedUsers");
+		const blockedMe = await User.find({ blockedUsers: req.user._id }).select("_id");
+		const excluded = [req.user._id, ...(me?.blockedUsers || []), ...blockedMe.map((u) => u._id)];
+
 		const users = await User.find({
-			_id: { $ne: req.user._id },
+			_id: { $nin: excluded },
 			$or: [{ username: regex }, { fullName: regex }],
 		})
 			.select("username fullName profileImg bio")
