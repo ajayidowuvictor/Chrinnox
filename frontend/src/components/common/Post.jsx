@@ -1,7 +1,7 @@
 import { FaRegComment } from "react-icons/fa";
 import { BiRepost } from "react-icons/bi";
 import { FaRegHeart } from "react-icons/fa";
-import { FaRegBookmark } from "react-icons/fa6";
+import { FaRegBookmark, FaBookmark } from "react-icons/fa6";
 import { FaTrash } from "react-icons/fa";
 import { useState } from "react";
 import { Link } from "react-router-dom";
@@ -17,6 +17,8 @@ const Post = ({ post }) => {
 	const queryClient = useQueryClient();
 	const postOwner = post.user;
 	const isLiked = post.likes.includes(authUser._id);
+	const isReposted = (post.reposts || []).includes(authUser._id);
+	const isSaved = (authUser.bookmarks || []).includes(post._id);
 
 	const isMyPost = authUser._id === post.user._id;
 
@@ -78,6 +80,45 @@ const Post = ({ post }) => {
 		},
 	});
 
+	const { mutate: repostPost, isPending: isReposting } = useMutation({
+		mutationFn: async () => {
+			const res = await fetch(`/api/posts/repost/${post._id}`, { method: "POST" });
+			const data = await res.json();
+			if (!res.ok) throw new Error(data.error || "Something went wrong");
+			return data;
+		},
+		onSuccess: (updatedReposts) => {
+			queryClient.setQueryData(["posts"], (oldData) =>
+				oldData?.map((p) => (p._id === post._id ? { ...p, reposts: updatedReposts } : p))
+			);
+			toast.success(updatedReposts.includes(authUser._id) ? "Reposted" : "Repost removed");
+		},
+		onError: (error) => {
+			toast.error(error.message);
+		},
+	});
+
+	const { mutate: savePost, isPending: isSaving } = useMutation({
+		mutationFn: async () => {
+			const res = await fetch(`/api/posts/bookmark/${post._id}`, { method: "POST" });
+			const data = await res.json();
+			if (!res.ok) throw new Error(data.error || "Something went wrong");
+			return data;
+		},
+		onSuccess: (updatedBookmarks) => {
+			queryClient.setQueryData(["authUser"], (old) => (old ? { ...old, bookmarks: updatedBookmarks } : old));
+			const nowSaved = updatedBookmarks.includes(post._id);
+			toast.success(nowSaved ? "Saved to your bookmarks" : "Removed from bookmarks");
+			// on the Saved page, an unsaved post should disappear
+			if (!nowSaved && window.location.pathname === "/bookmarks") {
+				queryClient.setQueryData(["posts"], (oldData) => oldData?.filter((p) => p._id !== post._id));
+			}
+		},
+		onError: (error) => {
+			toast.error(error.message);
+		},
+	});
+
 	const { mutate: commentPost, isPending: isCommenting } = useMutation({
 		mutationFn: async () => {
 			try {
@@ -118,6 +159,16 @@ const Post = ({ post }) => {
 		commentPost();
 	};
 
+	const handleRepost = () => {
+		if (isReposting) return;
+		repostPost();
+	};
+
+	const handleSave = () => {
+		if (isSaving) return;
+		savePost();
+	};
+
 	const handleLikePost = () => {
 		if (isLiking) return;
 		likePost();
@@ -132,6 +183,15 @@ const Post = ({ post }) => {
 					</Link>
 				</div>
 				<div className='flex flex-col flex-1'>
+					{post.repostedBy && (
+						<Link
+							to={`/profile/${post.repostedBy.username}`}
+							className='flex gap-1 items-center text-xs text-slate-500 mb-1 hover:underline'
+						>
+							<BiRepost className='w-4 h-4' />
+							{post.repostedBy.username === authUser.username ? "You" : post.repostedBy.fullName} reposted
+						</Link>
+					)}
 					<div className='flex gap-2 items-center'>
 						<Link to={`/profile/${postOwner.username}`} className='font-bold'>
 							{postOwner.fullName}
@@ -222,9 +282,23 @@ const Post = ({ post }) => {
 									<button className='outline-none'>close</button>
 								</form>
 							</dialog>
-							<div className='flex gap-1 items-center group cursor-pointer'>
-								<BiRepost className='w-6 h-6  text-slate-500 group-hover:text-green-500' />
-								<span className='text-sm text-slate-500 group-hover:text-green-500'>0</span>
+							<div className='flex gap-1 items-center group cursor-pointer' onClick={handleRepost}>
+								{isReposting ? (
+									<LoadingSpinner size='sm' />
+								) : (
+									<BiRepost
+										className={`w-6 h-6 group-hover:text-green-500 ${
+											isReposted ? "text-green-500" : "text-slate-500"
+										}`}
+									/>
+								)}
+								<span
+									className={`text-sm group-hover:text-green-500 ${
+										isReposted ? "text-green-500" : "text-slate-500"
+									}`}
+								>
+									{(post.reposts || []).length}
+								</span>
 							</div>
 							<div className='flex gap-1 items-center group cursor-pointer' onClick={handleLikePost}>
 								{isLiking && <LoadingSpinner size='sm' />}
@@ -245,7 +319,13 @@ const Post = ({ post }) => {
 							</div>
 						</div>
 						<div className='flex w-1/3 justify-end gap-2 items-center'>
-							<FaRegBookmark className='w-4 h-4 text-slate-500 cursor-pointer' />
+							<button onClick={handleSave} aria-label={isSaved ? "Remove bookmark" : "Save post"}>
+								{isSaved ? (
+									<FaBookmark className='w-4 h-4 text-sky-500 cursor-pointer' />
+								) : (
+									<FaRegBookmark className='w-4 h-4 text-slate-500 hover:text-sky-500 cursor-pointer' />
+								)}
+							</button>
 						</div>
 					</div>
 				</div>

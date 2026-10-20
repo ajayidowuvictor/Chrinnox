@@ -195,7 +195,7 @@ export const getFollowingPosts = async (req, res) => {
 
 		const following = user.following;
 
-		const feedPosts = await Post.find({ user: { $in: following } })
+		const feedPosts = await Post.find({ $or: [{ user: { $in: following } }, { reposts: { $in: following } }] })
 			.sort({ createdAt: -1 })
 			.populate({
 				path: "user",
@@ -206,7 +206,28 @@ export const getFollowingPosts = async (req, res) => {
 				select: "-password",
 			});
 
-		res.status(200).json(feedPosts);
+		// label posts that are here because someone you follow reposted them
+		const followingSet = new Set(following.map((id) => id.toString()));
+		const reposterByPost = new Map();
+		feedPosts.forEach((p) => {
+			if (!followingSet.has(p.user._id.toString())) {
+				const reposter = p.reposts.find((id) => followingSet.has(id.toString()));
+				if (reposter) reposterByPost.set(p._id.toString(), reposter.toString());
+			}
+		});
+		const reposters = await User.find({ _id: { $in: [...new Set(reposterByPost.values())] } }).select(
+			"username fullName"
+		);
+		const reposterMap = new Map(reposters.map((u) => [u._id.toString(), u]));
+
+		const result = feedPosts.map((p) => {
+			const obj = p.toObject();
+			const reposter = reposterMap.get(reposterByPost.get(p._id.toString()));
+			if (reposter) obj.repostedBy = { fullName: reposter.fullName, username: reposter.username };
+			return obj;
+		});
+
+		res.status(200).json(result);
 	} catch (error) {
 		console.log("Error in getFollowingPosts controller: ", error);
 		res.status(500).json({ error: "Internal server error" });
@@ -220,7 +241,7 @@ export const getUserPosts = async (req, res) => {
 		const user = await User.findOne({ username });
 		if (!user) return res.status(404).json({ error: "User not found" });
 
-		const posts = await Post.find({ user: user._id })
+		const posts = await Post.find({ $or: [{ user: user._id }, { reposts: user._id }] })
 			.sort({ createdAt: -1 })
 			.populate({
 				path: "user",
@@ -231,9 +252,107 @@ export const getUserPosts = async (req, res) => {
 				select: "-password",
 			});
 
-		res.status(200).json(posts);
+		const result = posts.map((p) => {
+			const obj = p.toObject();
+			if (p.user._id.toString() !== user._id.toString()) {
+				obj.repostedBy = { fullName: user.fullName, username: user.username };
+			}
+			return obj;
+		});
+
+		res.status(200).json(result);
 	} catch (error) {
 		console.log("Error in getUserPosts controller: ", error);
+		res.status(500).json({ error: "Internal server error" });
+	}
+};
+
+export const repostUnrepost = async (req, res) => {
+	try {
+		const userId = req.user._id;
+		const { id: postId } = req.params;
+
+		const post = await Post.findById(postId);
+		if (!post) {
+			return res.status(404).json({ error: "Post not found" });
+		}
+
+		const alreadyReposted = post.reposts.some((id) => id.toString() === userId.toString());
+
+		if (alreadyReposted) {
+			await Post.updateOne({ _id: postId }, { $pull: { reposts: userId } });
+			const updated = post.reposts.filter((id) => id.toString() !== userId.toString());
+			return res.status(200).json(updated);
+		}
+
+		post.reposts.push(userId);
+		await post.save();
+
+		// notify the post owner (not when reposting your own post)
+		if (post.user.toString() !== userId.toString()) {
+			const notification = new Notification({
+				from: userId,
+				to: post.user,
+				type: "repost",
+			});
+			await notification.save();
+		}
+
+		res.status(200).json(post.reposts);
+	} catch (error) {
+		console.log("Error in repostUnrepost controller: ", error);
+		res.status(500).json({ error: "Internal server error" });
+	}
+};
+
+export const bookmarkUnbookmark = async (req, res) => {
+	try {
+		const userId = req.user._id;
+		const { id: postId } = req.params;
+
+		const post = await Post.findById(postId);
+		if (!post) {
+			return res.status(404).json({ error: "Post not found" });
+		}
+
+		const user = await User.findById(userId).select("bookmarks");
+		const alreadySaved = user.bookmarks.some((id) => id.toString() === postId);
+
+		const updatedUser = await User.findByIdAndUpdate(
+			userId,
+			alreadySaved ? { $pull: { bookmarks: postId } } : { $addToSet: { bookmarks: postId } },
+			{ new: true }
+		).select("bookmarks");
+
+		res.status(200).json(updatedUser.bookmarks);
+	} catch (error) {
+		console.log("Error in bookmarkUnbookmark controller: ", error);
+		res.status(500).json({ error: "Internal server error" });
+	}
+};
+
+export const getBookmarkedPosts = async (req, res) => {
+	try {
+		const user = await User.findById(req.user._id).select("bookmarks");
+		if (!user) return res.status(404).json({ error: "User not found" });
+
+		const posts = await Post.find({ _id: { $in: user.bookmarks } })
+			.populate({
+				path: "user",
+				select: "-password",
+			})
+			.populate({
+				path: "comments.user",
+				select: "-password",
+			});
+
+		// most recently saved first
+		const order = user.bookmarks.map((id) => id.toString());
+		posts.sort((a, b) => order.indexOf(b._id.toString()) - order.indexOf(a._id.toString()));
+
+		res.status(200).json(posts);
+	} catch (error) {
+		console.log("Error in getBookmarkedPosts controller: ", error);
 		res.status(500).json({ error: "Internal server error" });
 	}
 };

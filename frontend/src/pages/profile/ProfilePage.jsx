@@ -139,6 +139,11 @@ const ProfilePage = () => {
 							<div className='flex justify-end px-4 mt-5'>
 								{isMyProfile && <EditProfileModal authUser={authUser} />}
 								{!isMyProfile && (
+									<Link to={`/messages/${user?.username}`} className='btn btn-outline rounded-full btn-sm mr-2'>
+										Message
+									</Link>
+								)}
+								{!isMyProfile && (
 									<button
 										className='btn btn-outline rounded-full btn-sm'
 										onClick={() => follow(user?._id)}

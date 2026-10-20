@@ -1,8 +1,8 @@
 import Logo from "../svgs/Logo";
 
 import { MdHomeFilled } from "react-icons/md";
-import { IoNotifications } from "react-icons/io5";
-import { FaUser } from "react-icons/fa";
+import { IoNotifications, IoMail } from "react-icons/io5";
+import { FaUser, FaBookmark } from "react-icons/fa";
 import { Link } from "react-router-dom";
 import { BiLogOut } from "react-icons/bi";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -33,6 +33,17 @@ const Sidebar = () => {
 		},
 	});
 	const { data: authUser } = useQuery({ queryKey: ["authUser"] });
+	const { data: unread } = useQuery({
+		queryKey: ["unreadCount"],
+		queryFn: async () => {
+			const res = await fetch("/api/messages/unread-count");
+			const data = await res.json();
+			if (!res.ok) throw new Error(data.error || "Something went wrong");
+			return data.count;
+		},
+		refetchInterval: 15000,
+		enabled: !!authUser,
+	});
 
 	return (
 		<div className='md:flex-[2_2_0] w-18 max-w-52'>
@@ -57,6 +68,33 @@ const Sidebar = () => {
 						>
 							<IoNotifications className='w-6 h-6' />
 							<span className='text-lg hidden md:block'>Notifications</span>
+						</Link>
+					</li>
+
+					<li className='flex justify-center md:justify-start'>
+						<Link
+							to='/messages'
+							className='flex gap-3 items-center hover:bg-stone-900 transition-all rounded-full duration-300 py-2 pl-2 pr-4 max-w-fit cursor-pointer'
+						>
+							<span className='relative'>
+								<IoMail className='w-6 h-6' />
+								{unread > 0 && (
+									<span className='absolute -top-2 -right-2 bg-sky-500 text-white text-[10px] font-bold rounded-full min-w-4 h-4 px-1 flex items-center justify-center'>
+										{unread > 99 ? "99+" : unread}
+									</span>
+								)}
+							</span>
+							<span className='text-lg hidden md:block'>Messages</span>
+						</Link>
+					</li>
+
+					<li className='flex justify-center md:justify-start'>
+						<Link
+							to='/bookmarks'
+							className='flex gap-3 items-center hover:bg-stone-900 transition-all rounded-full duration-300 py-2 pl-2 pr-4 max-w-fit cursor-pointer'
+						>
+							<FaBookmark className='w-5 h-5' />
+							<span className='text-lg hidden md:block'>Saved</span>
 						</Link>
 					</li>
 
