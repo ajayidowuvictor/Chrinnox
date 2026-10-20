@@ -19,11 +19,13 @@ const NotificationPage = () => {
 				const res = await fetch("/api/notifications");
 				const data = await res.json();
 				if (!res.ok) throw new Error(data.error || "Something went wrong");
+				queryClient.invalidateQueries({ queryKey: ["notificationCount"] });
 				return data;
 			} catch (error) {
 				throw new Error(error);
 			}
 		},
+		refetchOnMount: "always",
 	});
 
 	const { mutate: deleteNotifications } = useMutation({

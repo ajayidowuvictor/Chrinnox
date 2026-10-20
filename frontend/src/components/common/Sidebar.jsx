@@ -33,6 +33,17 @@ const Sidebar = () => {
 		},
 	});
 	const { data: authUser } = useQuery({ queryKey: ["authUser"] });
+	const { data: unreadNotifications } = useQuery({
+		queryKey: ["notificationCount"],
+		queryFn: async () => {
+			const res = await fetch("/api/notifications/unread-count");
+			const data = await res.json();
+			if (!res.ok) throw new Error(data.error || "Something went wrong");
+			return data.count;
+		},
+		refetchInterval: 15000,
+		enabled: !!authUser,
+	});
 	const { data: unread } = useQuery({
 		queryKey: ["unreadCount"],
 		queryFn: async () => {
@@ -66,7 +77,14 @@ const Sidebar = () => {
 							to='/notifications'
 							className='flex gap-3 items-center hover:bg-stone-900 transition-all rounded-full duration-300 py-2 pl-2 pr-4 max-w-fit cursor-pointer'
 						>
-							<IoNotifications className='w-6 h-6' />
+							<span className='relative'>
+								<IoNotifications className='w-6 h-6' />
+								{unreadNotifications > 0 && (
+									<span className='absolute -top-2 -right-2 bg-sky-500 text-white text-[10px] font-bold rounded-full min-w-4 h-4 px-1 flex items-center justify-center'>
+										{unreadNotifications > 99 ? "99+" : unreadNotifications}
+									</span>
+								)}
+							</span>
 							<span className='text-lg hidden md:block'>Notifications</span>
 						</Link>
 					</li>
