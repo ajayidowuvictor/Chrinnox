@@ -11,6 +11,9 @@ import PostPage from "./pages/post/PostPage";
 import SearchPage from "./pages/search/SearchPage";
 import SettingsPage from "./pages/settings/SettingsPage";
 import TopicPage from "./pages/topic/TopicPage";
+import ForgotPasswordPage from "./pages/auth/recover/ForgotPasswordPage";
+import ResetPasswordPage from "./pages/auth/recover/ResetPasswordPage";
+import VerifyEmailPage from "./pages/auth/recover/VerifyEmailPage";
 import AdminPage from "./pages/admin/AdminPage";
 import CommunityPage from "./pages/community/CommunityPage";
 import CreateCommunityPage from "./pages/community/CreateCommunityPage";
@@ -59,6 +62,9 @@ function App() {
 			<Routes>
 				<Route path='/' element={authUser ? <HomePage /> : <Navigate to='/login' />} />
 				<Route path='/login' element={!authUser ? <LoginPage /> : <Navigate to='/' />} />
+				<Route path='/forgot-password' element={!authUser ? <ForgotPasswordPage /> : <Navigate to='/' />} />
+				<Route path='/reset-password/:token' element={<ResetPasswordPage />} />
+				<Route path='/verify-email/:token' element={<VerifyEmailPage />} />
 				<Route path='/signup' element={!authUser ? <SignUpPage /> : <Navigate to='/' />} />
 				<Route path='/notifications' element={authUser ? <NotificationPage /> : <Navigate to='/login' />} />
 				<Route path='/post/:id' element={authUser ? <PostPage /> : <Navigate to='/login' />} />

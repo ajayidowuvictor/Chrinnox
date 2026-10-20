@@ -91,6 +91,9 @@ const LoginPage = () => {
 						{isPending ? "Loading..." : "Login"}
 					</button>
 					{isError && <p className='text-red-500'>{error.message}</p>}
+					<Link to='/forgot-password' className='text-sky-400 text-sm'>
+						Forgot your password?
+					</Link>
 				</form>
 				<div className='flex flex-col gap-2 mt-4'>
 					<p className='text-white text-lg'>{"Don't"} have an account?</p>

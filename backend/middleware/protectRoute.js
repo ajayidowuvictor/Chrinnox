@@ -20,6 +20,11 @@ export const protectRoute = async (req, res, next) => {
 			return res.status(404).json({ error: "User not found" });
 		}
 
+		// a password reset signs out every older session
+		if (user.passwordChangedAt && decoded.iat < Math.floor(user.passwordChangedAt.getTime() / 1000)) {
+			return res.status(401).json({ error: "Unauthorized: Please log in again" });
+		}
+
 		if (user.suspended) {
 			return res.status(403).json({ error: "This account has been suspended" });
 		}

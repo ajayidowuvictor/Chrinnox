@@ -2,6 +2,7 @@ import { useState } from "react";
 
 import Posts from "../../components/common/Posts";
 import CreatePost from "./CreatePost";
+import VerifyEmailBanner from "../../components/common/VerifyEmailBanner";
 
 const FEEDS = [
 	{ id: "forYou", label: "For you", hint: "Useful, active and fresh posts, with people and topics you follow boosted" },
@@ -37,6 +38,7 @@ const HomePage = () => {
 	return (
 		<>
 			<div className='flex-[4_4_0] mr-auto border-r border-gray-700 min-h-screen min-w-0'>
+				<VerifyEmailBanner />
 				{/* Feed modes: you choose how your feed works */}
 				<div className='flex w-full border-b border-gray-700 overflow-x-auto' role='tablist'>
 					{FEEDS.map((feed) => (

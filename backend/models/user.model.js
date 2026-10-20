@@ -3,6 +3,12 @@ import mongoose from "mongoose";
 const userSchema = new mongoose.Schema(
 	{
 		suspended: { type: Boolean, default: false },
+		emailVerified: { type: Boolean, default: false },
+		verifyTokenHash: { type: String },
+		verifyTokenExpires: { type: Date },
+		resetTokenHash: { type: String },
+		resetTokenExpires: { type: Date },
+		passwordChangedAt: { type: Date },
 		username: {
 			type: String,
 			required: true,
