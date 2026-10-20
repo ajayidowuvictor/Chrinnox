@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "react-hot-toast";
 
 import LoadingSpinner from "../../components/common/LoadingSpinner";
 import useSafetyActions from "../../hooks/useSafetyActions";
+import { canPromptInstall, isInstalled, isIos, promptInstall, subscribeInstall } from "../../utils/install";
 import { getThemePreference, setThemePreference } from "../../utils/theme";
 
 import { IoCloseSharp } from "react-icons/io5";
@@ -181,6 +182,39 @@ const AppearanceSection = () => {
 	);
 };
 
+const InstallSection = () => {
+	const [, force] = useState(0);
+	useEffect(() => subscribeInstall(() => force((n) => n + 1)), []);
+
+	let body;
+	if (isInstalled()) {
+		body = <p className='text-sm text-slate-500'>Chrinnox is installed on this device. 🎉</p>;
+	} else if (canPromptInstall()) {
+		body = (
+			<button className='btn btn-primary btn-sm rounded-full text-white w-fit' onClick={() => promptInstall()}>
+				Install Chrinnox
+			</button>
+		);
+	} else if (isIos()) {
+		body = (
+			<p className='text-sm'>
+				On iPhone: tap the <b>Share</b> button in Safari, then <b>Add to Home Screen</b>.
+			</p>
+		);
+	} else {
+		body = (
+			<p className='text-sm'>
+				Open your browser menu (the three dots) and choose <b>Install app</b> or <b>Add to Home screen</b>.
+			</p>
+		);
+	}
+	return (
+		<Section title='Install the app' hint='Opens full-screen from your home screen, like any other app.'>
+			{body}
+		</Section>
+	);
+};
+
 const SettingsPage = () => {
 	const queryClient = useQueryClient();
 	const { toggleMute, toggleBlock } = useSafetyActions();
@@ -307,6 +341,8 @@ const SettingsPage = () => {
 					emptyText="You haven't blocked anyone."
 				/>
 			</Section>
+
+			<InstallSection />
 
 			<AppearanceSection />
 
