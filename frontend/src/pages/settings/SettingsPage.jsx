@@ -72,6 +72,86 @@ const PeopleList = ({ people, actionLabel, onAction, emptyText }) => (
 	</>
 );
 
+const SecurityForms = () => {
+	const queryClient = useQueryClient();
+	const { data: authUser } = useQuery({ queryKey: ["authUser"] });
+	const [pw, setPw] = useState({ current: "", next: "", again: "" });
+	const [mail, setMail] = useState({ email: "", current: "" });
+
+	const send = async (body) => {
+		const res = await fetch("/api/users/update", {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify(body),
+		});
+		const data = await res.json();
+		if (!res.ok) throw new Error(data.error || "Something went wrong");
+		return data;
+	};
+
+	const { mutate: changePassword, isPending: changingPw } = useMutation({
+		mutationFn: () => send({ currentPassword: pw.current, newPassword: pw.next }),
+		onSuccess: () => {
+			toast.success("Password changed. Other devices were signed out.");
+			setPw({ current: "", next: "", again: "" });
+		},
+		onError: (e) => toast.error(e.message),
+	});
+
+	const { mutate: changeEmail, isPending: changingMail } = useMutation({
+		mutationFn: () => send({ email: mail.email, currentPassword: mail.current }),
+		onSuccess: () => {
+			toast.success("Email changed. We sent a link to confirm it.");
+			setMail({ email: "", current: "" });
+			queryClient.invalidateQueries({ queryKey: ["authUser"] });
+		},
+		onError: (e) => toast.error(e.message),
+	});
+
+	const mismatch = pw.again.length > 0 && pw.again !== pw.next;
+
+	return (
+		<>
+			<Section title='Change password'>
+				<form
+					className='flex flex-col gap-3 max-w-sm'
+					onSubmit={(e) => {
+						e.preventDefault();
+						if (!mismatch) changePassword();
+					}}
+				>
+					<input type='password' className='input input-bordered input-sm' placeholder='Current password' value={pw.current} onChange={(e) => setPw({ ...pw, current: e.target.value })} required />
+					<input type='password' className='input input-bordered input-sm' placeholder='New password (at least 6 characters)' minLength={6} value={pw.next} onChange={(e) => setPw({ ...pw, next: e.target.value })} required />
+					<input type='password' className='input input-bordered input-sm' placeholder='New password again' value={pw.again} onChange={(e) => setPw({ ...pw, again: e.target.value })} required />
+					{mismatch && <p className='text-red-500 text-sm'>The two new passwords don&apos;t match.</p>}
+					<button className='btn btn-primary btn-sm rounded-full text-white w-fit' disabled={changingPw || mismatch || pw.next.length < 6 || !pw.current}>
+						{changingPw ? "Saving..." : "Change password"}
+					</button>
+				</form>
+			</Section>
+
+			<Section
+				title='Email address'
+				hint={`Now: ${authUser?.email || ""} ${authUser?.emailVerified ? "(confirmed)" : "(not confirmed yet)"}`}
+			>
+				<form
+					className='flex flex-col gap-3 max-w-sm'
+					onSubmit={(e) => {
+						e.preventDefault();
+						changeEmail();
+					}}
+				>
+					<input type='email' className='input input-bordered input-sm' placeholder='New email address' value={mail.email} onChange={(e) => setMail({ ...mail, email: e.target.value })} required />
+					<input type='password' className='input input-bordered input-sm' placeholder='Your current password' value={mail.current} onChange={(e) => setMail({ ...mail, current: e.target.value })} required />
+					<button className='btn btn-primary btn-sm rounded-full text-white w-fit' disabled={changingMail || !mail.email.trim() || !mail.current}>
+						{changingMail ? "Saving..." : "Change email"}
+					</button>
+				</form>
+			</Section>
+		</>
+	);
+};
+
 const SettingsPage = () => {
 	const queryClient = useQueryClient();
 	const { toggleMute, toggleBlock } = useSafetyActions();
@@ -198,6 +278,8 @@ const SettingsPage = () => {
 					emptyText="You haven't blocked anyone."
 				/>
 			</Section>
+
+			<SecurityForms />
 
 			<Section title='Account'>
 				<div className='flex flex-wrap gap-2'>

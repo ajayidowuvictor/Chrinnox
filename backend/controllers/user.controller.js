@@ -6,6 +6,8 @@ import Notification from "../models/notification.model.js";
 import User from "../models/user.model.js";
 import { findUserByUsername, escapeRegex } from "../lib/utils/findUser.js";
 import { isBlockedBetween, getHiddenUserIds } from "../lib/utils/relations.js";
+import { generateTokenAndSetCookie } from "../lib/utils/generateToken.js";
+import { sendVerificationEmail } from "./auth.controller.js";
 
 export const getUserProfile = async (req, res) => {
 	const { username } = req.params;
@@ -142,7 +144,9 @@ export const updateUser = async (req, res) => {
 			}
 		}
 
+		let emailChanged = false;
 		if (email && email.trim().toLowerCase() !== user.email) {
+			emailChanged = true;
 			const cleanEmail = email.trim().toLowerCase();
 			if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
 				return res.status(400).json({ error: "Invalid email format" });
@@ -150,6 +154,13 @@ export const updateUser = async (req, res) => {
 			const emailTaken = await User.findOne({ email: cleanEmail });
 			if (emailTaken && emailTaken._id.toString() !== user._id.toString()) {
 				return res.status(400).json({ error: "Email is already taken" });
+			}
+			// changing the email changes where password resets go, so ask for the password
+			if (!currentPassword) {
+				return res.status(400).json({ error: "Enter your current password to change your email" });
+			}
+			if (!(await bcrypt.compare(currentPassword, user.password))) {
+				return res.status(400).json({ error: "Current password is incorrect" });
 			}
 		}
 
@@ -160,10 +171,11 @@ export const updateUser = async (req, res) => {
 			return res.status(400).json({ error: "Link can be at most 100 characters" });
 		}
 
-		if ((!newPassword && currentPassword) || (!currentPassword && newPassword)) {
+		if ((!newPassword && currentPassword && !emailChanged) || (!currentPassword && newPassword)) {
 			return res.status(400).json({ error: "Please provide both current password and new password" });
 		}
 
+		let passwordChanged = false;
 		if (currentPassword && newPassword) {
 			const isMatch = await bcrypt.compare(currentPassword, user.password);
 			if (!isMatch) return res.status(400).json({ error: "Current password is incorrect" });
@@ -173,6 +185,8 @@ export const updateUser = async (req, res) => {
 
 			const salt = await bcrypt.genSalt(10);
 			user.password = await bcrypt.hash(newPassword, salt);
+			user.passwordChangedAt = new Date();
+			passwordChanged = true;
 		}
 
 		if (profileImg) {
@@ -195,7 +209,10 @@ export const updateUser = async (req, res) => {
 		}
 
 		user.fullName = (fullName && fullName.trim()) || user.fullName;
-		user.email = (email && email.trim().toLowerCase()) || user.email;
+		if (emailChanged) {
+			user.email = email.trim().toLowerCase();
+			user.emailVerified = false;
+		}
 		user.username = (username && username.trim()) || user.username;
 		// an empty string clears the field; leaving it out keeps the old value
 		user.bio = typeof bio === "string" ? bio : user.bio;
@@ -205,10 +222,15 @@ export const updateUser = async (req, res) => {
 
 		user = await user.save();
 
-		// password should be null in response
-		user.password = null;
+		// changing the password signs out other devices; keep this one signed in
+		if (passwordChanged) generateTokenAndSetCookie(user._id, res);
+		if (emailChanged) sendVerificationEmail(user).catch((e) => console.log("verification email failed:", e.message));
 
-		return res.status(200).json(user);
+		const safe = user.toObject();
+		for (const k of ["password", "verifyTokenHash", "verifyTokenExpires", "resetTokenHash", "resetTokenExpires"]) {
+			delete safe[k];
+		}
+		return res.status(200).json(safe);
 	} catch (error) {
 		console.log("Error in updateUser: ", error.message);
 		res.status(500).json({ error: error.message });

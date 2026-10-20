@@ -8,7 +8,7 @@ import { sendMail, appUrl } from "../lib/utils/mail.js";
 
 const HOUR = 60 * 60 * 1000;
 
-const sendVerificationEmail = async (user) => {
+export const sendVerificationEmail = async (user) => {
 	const { raw, hash } = makeToken();
 	user.verifyTokenHash = hash;
 	user.verifyTokenExpires = new Date(Date.now() + 24 * HOUR);
