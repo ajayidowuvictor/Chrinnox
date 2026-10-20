@@ -1,5 +1,5 @@
 import Message from "../models/message.model.js";
-import User from "../models/user.model.js";
+import { findUserByUsername } from "../lib/utils/findUser.js";
 
 const PUBLIC_FIELDS = "username fullName profileImg";
 
@@ -42,7 +42,7 @@ export const getConversations = async (req, res) => {
 export const getMessages = async (req, res) => {
 	try {
 		const me = req.user._id;
-		const other = await User.findOne({ username: req.params.username }).select(PUBLIC_FIELDS);
+		const other = await findUserByUsername(req.params.username).select(PUBLIC_FIELDS);
 		if (!other) return res.status(404).json({ error: "User not found" });
 
 		const latest = await Message.find({
@@ -71,7 +71,7 @@ export const sendMessage = async (req, res) => {
 		if (!text) return res.status(400).json({ error: "Message cannot be empty" });
 		if (text.length > 1000) return res.status(400).json({ error: "Message is too long (max 1000 characters)" });
 
-		const other = await User.findOne({ username: req.params.username }).select("_id");
+		const other = await findUserByUsername(req.params.username).select("_id");
 		if (!other) return res.status(404).json({ error: "User not found" });
 		if (other._id.equals(me)) return res.status(400).json({ error: "You can't message yourself" });
 

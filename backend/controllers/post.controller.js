@@ -1,6 +1,7 @@
 import Notification from "../models/notification.model.js";
 import Post from "../models/post.model.js";
 import User from "../models/user.model.js";
+import { findUserByUsername } from "../lib/utils/findUser.js";
 import { v2 as cloudinary } from "cloudinary";
 
 export const createPost = async (req, res) => {
@@ -238,7 +239,7 @@ export const getUserPosts = async (req, res) => {
 	try {
 		const { username } = req.params;
 
-		const user = await User.findOne({ username });
+		const user = await findUserByUsername(username);
 		if (!user) return res.status(404).json({ error: "User not found" });
 
 		const posts = await Post.find({ $or: [{ user: user._id }, { reposts: user._id }] })

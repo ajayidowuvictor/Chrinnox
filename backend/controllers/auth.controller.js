@@ -1,17 +1,30 @@
 import { generateTokenAndSetCookie } from "../lib/utils/generateToken.js";
 import User from "../models/user.model.js";
 import bcrypt from "bcryptjs";
+import { findUserByUsername } from "../lib/utils/findUser.js";
 
 export const signup = async (req, res) => {
 	try {
-		const { fullName, username, email, password } = req.body;
+		const fullName = String(req.body.fullName ?? "").trim();
+		const username = String(req.body.username ?? "").trim();
+		const email = String(req.body.email ?? "").trim().toLowerCase();
+		const password = String(req.body.password ?? "");
+
+		if (!fullName) {
+			return res.status(400).json({ error: "Full name is required" });
+		}
+		if (!/^[A-Za-z0-9_]{3,20}$/.test(username)) {
+			return res
+				.status(400)
+				.json({ error: "Username must be 3-20 characters: letters, numbers or underscore, no spaces" });
+		}
 
 		const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 		if (!emailRegex.test(email)) {
 			return res.status(400).json({ error: "Invalid email format" });
 		}
 
-		const existingUser = await User.findOne({ username });
+		const existingUser = await findUserByUsername(username);
 		if (existingUser) {
 			return res.status(400).json({ error: "Username is already taken" });
 		}
@@ -61,8 +74,8 @@ export const signup = async (req, res) => {
 export const login = async (req, res) => {
 	try {
 		const { username, password } = req.body;
-		const user = await User.findOne({ username });
-		const isPasswordCorrect = await bcrypt.compare(password, user?.password || "");
+		const user = await findUserByUsername(username);
+		const isPasswordCorrect = await bcrypt.compare(String(password ?? ""), user?.password || "");
 
 		if (!user || !isPasswordCorrect) {
 			return res.status(400).json({ error: "Invalid username or password" });
