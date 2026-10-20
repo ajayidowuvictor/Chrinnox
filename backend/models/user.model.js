@@ -3,6 +3,7 @@ import mongoose from "mongoose";
 const userSchema = new mongoose.Schema(
 	{
 		suspended: { type: Boolean, default: false },
+		needsOnboarding: { type: Boolean, default: false }, // set at sign-up; older accounts skip the welcome flow
 		emailVerified: { type: Boolean, default: false },
 		verifyTokenHash: { type: String },
 		verifyTokenExpires: { type: Date },

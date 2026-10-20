@@ -121,6 +121,16 @@ export const searchUsers = async (req, res) => {
 	}
 };
 
+export const completeOnboarding = async (req, res) => {
+	try {
+		await User.updateOne({ _id: req.user._id }, { needsOnboarding: false });
+		res.status(200).json({ done: true });
+	} catch (error) {
+		console.log("Error in completeOnboarding: ", error.message);
+		res.status(500).json({ error: "Internal Server Error" });
+	}
+};
+
 export const updateUser = async (req, res) => {
 	const { fullName, email, username, currentPassword, newPassword, bio, link } = req.body;
 	let { profileImg, coverImg } = req.body;

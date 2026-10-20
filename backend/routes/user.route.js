@@ -7,7 +7,7 @@ import {
 	updateMutedWords,
 	updatePrivacySettings,
 } from "../controllers/safety.controller.js";
-import { followUnfollowUser, getSuggestedUsers, getUserProfile, searchUsers, updateUser } from "../controllers/user.controller.js";
+import { completeOnboarding, followUnfollowUser, getSuggestedUsers, getUserProfile, searchUsers, updateUser } from "../controllers/user.controller.js";
 
 const router = express.Router();
 
@@ -21,5 +21,6 @@ router.post("/block/:id", protectRoute, blockUnblockUser);
 router.get("/suggested", protectRoute, getSuggestedUsers);
 router.post("/follow/:id", protectRoute, followUnfollowUser);
 router.post("/update", protectRoute, updateUser);
+router.post("/onboarding-complete", protectRoute, completeOnboarding);
 
 export default router;

@@ -14,6 +14,7 @@ import TopicPage from "./pages/topic/TopicPage";
 import ForgotPasswordPage from "./pages/auth/recover/ForgotPasswordPage";
 import ResetPasswordPage from "./pages/auth/recover/ResetPasswordPage";
 import VerifyEmailPage from "./pages/auth/recover/VerifyEmailPage";
+import WelcomePage from "./pages/welcome/WelcomePage";
 import AdminPage from "./pages/admin/AdminPage";
 import CommunityPage from "./pages/community/CommunityPage";
 import CreateCommunityPage from "./pages/community/CreateCommunityPage";
@@ -55,6 +56,13 @@ function App() {
 		);
 	}
 
+	// brand-new accounts see the welcome screen once
+	const needsWelcome = !!authUser?.needsOnboarding;
+	const allowedBeforeWelcome = ["/welcome", "/verify-email/"].some((p) => pathname.startsWith(p));
+	if (needsWelcome && !allowedBeforeWelcome) {
+		return <Navigate to='/welcome' replace />;
+	}
+
 	return (
 		<div className={`flex max-w-6xl mx-auto ${pathname.startsWith("/messages/") ? "" : "pb-16 md:pb-0"}`}>
 			{/* Common component, bc it's not wrapped with Routes */}
@@ -71,6 +79,7 @@ function App() {
 				<Route path='/topic/:name' element={authUser ? <TopicPage /> : <Navigate to='/login' />} />
 				<Route path='/c/:slug' element={authUser ? <CommunityPage /> : <Navigate to='/login' />} />
 				<Route path='/communities/new' element={authUser ? <CreateCommunityPage /> : <Navigate to='/login' />} />
+				<Route path='/welcome' element={authUser ? <WelcomePage /> : <Navigate to='/login' />} />
 				<Route path='/admin' element={authUser ? <AdminPage /> : <Navigate to='/login' />} />
 				<Route path='/settings' element={authUser ? <SettingsPage /> : <Navigate to='/login' />} />
 				<Route path='/search' element={authUser ? <SearchPage /> : <Navigate to='/login' />} />

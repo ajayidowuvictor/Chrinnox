@@ -66,6 +66,7 @@ export const signup = async (req, res) => {
 			username,
 			email,
 			password: hashedPassword,
+			needsOnboarding: true,
 		});
 
 		if (newUser) {
@@ -82,6 +83,7 @@ export const signup = async (req, res) => {
 				following: newUser.following,
 				profileImg: newUser.profileImg,
 				coverImg: newUser.coverImg,
+				needsOnboarding: true,
 			});
 		} else {
 			res.status(400).json({ error: "Invalid user data" });
