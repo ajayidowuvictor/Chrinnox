@@ -792,3 +792,65 @@ export const acceptAnswer = async (req, res) => {
 		res.status(500).json({ error: "Internal server error" });
 	}
 };
+
+export const editPost = async (req, res) => {
+	try {
+		const { id } = req.params;
+		if (!mongoose.isValidObjectId(id)) return res.status(404).json({ error: "Post not found" });
+		const post = await Post.findById(id);
+		if (!post) return res.status(404).json({ error: "Post not found" });
+		if (post.user.toString() !== req.user._id.toString()) {
+			return res.status(403).json({ error: "You can only edit your own posts" });
+		}
+
+		const text = typeof req.body.text === "string" ? req.body.text.trim() : "";
+		const hasImages = (post.imgs || []).length > 0 || !!post.img;
+		if (!text && (!hasImages || post.type !== "post")) {
+			return res.status(400).json({ error: "Post can't be empty" });
+		}
+		if (text.length > MAX_POST_LENGTH) {
+			return res.status(400).json({ error: `Posts can be at most ${MAX_POST_LENGTH} characters` });
+		}
+		if (text === (post.text || "")) return res.status(200).json({ text: post.text, topics: post.topics, editedAt: post.editedAt });
+
+		post.text = text;
+		post.topics = extractTopics(text);
+		post.editedAt = new Date();
+		await post.save();
+
+		res.status(200).json({ text: post.text, topics: post.topics, editedAt: post.editedAt });
+	} catch (error) {
+		console.log("Error in editPost controller: ", error);
+		res.status(500).json({ error: "Internal server error" });
+	}
+};
+
+export const deleteComment = async (req, res) => {
+	try {
+		const { id, commentId } = req.params;
+		if (!mongoose.isValidObjectId(id) || !mongoose.isValidObjectId(commentId)) {
+			return res.status(404).json({ error: "Reply not found" });
+		}
+		const post = await Post.findById(id);
+		if (!post) return res.status(404).json({ error: "Post not found" });
+		const comment = post.comments.id(commentId);
+		if (!comment) return res.status(404).json({ error: "Reply not found" });
+
+		const me = req.user._id.toString();
+		let allowed = comment.user.toString() === me || post.user.toString() === me;
+		if (!allowed && post.community) {
+			const community = await Community.findById(post.community);
+			allowed = !!community && canModerate(community, me);
+		}
+		if (!allowed) return res.status(403).json({ error: "You can't delete this reply" });
+
+		comment.deleteOne();
+		if (post.acceptedComment && post.acceptedComment.toString() === commentId) post.acceptedComment = undefined;
+		await post.save();
+
+		res.status(200).json({ deleted: true });
+	} catch (error) {
+		console.log("Error in deleteComment controller: ", error);
+		res.status(500).json({ error: "Internal server error" });
+	}
+};

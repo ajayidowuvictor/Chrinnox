@@ -45,6 +45,9 @@ const postSchema = new mongoose.Schema(
 		acceptedComment: {
 			type: mongoose.Schema.Types.ObjectId,
 		},
+		editedAt: {
+			type: Date,
+		},
 		topics: [
 			{
 				type: String,

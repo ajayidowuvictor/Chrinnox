@@ -3,7 +3,7 @@ import { BiRepost } from "react-icons/bi";
 import { FaRegHeart } from "react-icons/fa";
 import { FaRegBookmark, FaBookmark, FaShareNodes } from "react-icons/fa6";
 import { IoEllipsisHorizontal } from "react-icons/io5";
-import { FaTrash } from "react-icons/fa";
+import { FaTrash, FaPen } from "react-icons/fa";
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -24,6 +24,8 @@ const Post = ({ post }) => {
 	const navigate = useNavigate();
 	const { toggleMute, toggleBlock } = useSafetyActions();
 	const [reportTarget, setReportTarget] = useState(null);
+	const [editing, setEditing] = useState(false);
+	const [editText, setEditText] = useState("");
 	const postOwner = post.user;
 	const isLiked = post.likes.includes(authUser._id);
 	const isReposted = (post.reposts || []).includes(authUser._id);
@@ -156,6 +158,44 @@ const Post = ({ post }) => {
 				...p,
 				comments: p.comments.map((c) => (c._id === commentId ? { ...c, helpful } : c)),
 			})),
+		onError: (error) => toast.error(error.message),
+	});
+
+	const { mutate: saveEdit, isPending: isSavingEdit } = useMutation({
+		mutationFn: async () => {
+			const res = await fetch(`/api/posts/${post._id}`, {
+				method: "PUT",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ text: editText }),
+			});
+			const data = await res.json();
+			if (!res.ok) throw new Error(data.error || "Something went wrong");
+			return data;
+		},
+		onSuccess: (data) => {
+			updateCachedPost((p) => ({ ...p, text: data.text, topics: data.topics, editedAt: data.editedAt }));
+			setEditing(false);
+			queryClient.invalidateQueries({ queryKey: ["trendingTopics"] });
+			toast.success("Post updated");
+		},
+		onError: (error) => toast.error(error.message),
+	});
+
+	const { mutate: deleteReply } = useMutation({
+		mutationFn: async (commentId) => {
+			const res = await fetch(`/api/posts/${post._id}/comment/${commentId}`, { method: "DELETE" });
+			const data = await res.json();
+			if (!res.ok) throw new Error(data.error || "Something went wrong");
+			return commentId;
+		},
+		onSuccess: (commentId) => {
+			updateCachedPost((p) => ({
+				...p,
+				comments: p.comments.filter((c) => c._id !== commentId),
+				acceptedComment: p.acceptedComment === commentId ? undefined : p.acceptedComment,
+			}));
+			toast.success("Reply deleted");
+		},
 		onError: (error) => toast.error(error.message),
 	});
 
@@ -328,6 +368,7 @@ const Post = ({ post }) => {
 							<Link to={`/post/${post._id}`} className='hover:underline'>
 								{formattedDate}
 							</Link>
+							{post.editedAt && <span title={new Date(post.editedAt).toLocaleString()}>· edited</span>}
 						</span>
 						{(!isMyPost || isCommunityMod) && (
 							<div className='dropdown dropdown-end flex justify-end flex-1'>
@@ -404,7 +445,17 @@ const Post = ({ post }) => {
 							</div>
 						)}
 						{isMyPost && (
-							<span className='flex justify-end flex-1'>
+							<span className='flex justify-end flex-1 gap-3 items-center'>
+								{!isDeleting && (
+									<FaPen
+										className='cursor-pointer hover:text-sky-400 w-3 h-3'
+										aria-label='Edit post'
+										onClick={() => {
+											setEditText(post.text || "");
+											setEditing(true);
+										}}
+									/>
+								)}
 								{!isDeleting && (
 									<FaTrash className='cursor-pointer hover:text-red-500' onClick={handleDeletePost} />
 								)}
@@ -437,7 +488,34 @@ const Post = ({ post }) => {
 								)}
 							</div>
 						)}
-						<PostText text={post.text} />
+						{editing ? (
+							<div className='flex flex-col gap-2'>
+								<textarea
+									className='textarea textarea-bordered w-full'
+									rows={4}
+									maxLength={500}
+									value={editText}
+									onChange={(e) => setEditText(e.target.value)}
+									autoFocus
+								/>
+								<div className='flex gap-2 justify-end items-center'>
+									<span className='text-xs text-slate-500 mr-auto'>{editText.length}/500</span>
+									<button type='button' className='btn btn-outline btn-xs rounded-full' onClick={() => setEditing(false)}>
+										Cancel
+									</button>
+									<button
+										type='button'
+										className='btn btn-primary btn-xs rounded-full text-white'
+										disabled={isSavingEdit}
+										onClick={() => saveEdit()}
+									>
+										{isSavingEdit ? "Saving..." : "Save"}
+									</button>
+								</div>
+							</div>
+						) : (
+							<PostText text={post.text} />
+						)}
 						{post.type === "opportunity" && post.opportunity?.link && (
 							<a
 								href={post.opportunity.link}
@@ -550,6 +628,15 @@ const Post = ({ post }) => {
 														{(comment.helpful || []).includes(authUser._id) ? <FaLightbulb /> : <FaRegLightbulb />}
 														Helpful{(comment.helpful || []).length > 0 ? ` · ${comment.helpful.length}` : ""}
 													</button>
+													{(comment.user._id === authUser._id || isMyPost || isCommunityMod) && (
+														<button
+															type='button'
+															className='text-xs mt-1 w-fit text-slate-500 hover:text-red-400'
+															onClick={() => window.confirm("Delete this reply?") && deleteReply(comment._id)}
+														>
+															Delete reply
+														</button>
+													)}
 													{isQuestion && isMyPost && (
 														<button
 															type='button'

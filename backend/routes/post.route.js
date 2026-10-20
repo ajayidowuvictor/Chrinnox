@@ -17,6 +17,8 @@ import {
 	getFeed,
 	getOpportunities,
 	acceptAnswer,
+	editPost,
+	deleteComment,
 	helpfulUnhelpful,
 	helpfulUnhelpfulComment,
 } from "../controllers/post.controller.js";
@@ -42,6 +44,8 @@ router.post("/:id/accept/:commentId", protectRoute, acceptAnswer);
 router.post("/comment/:postId/:commentId/helpful", protectRoute, helpfulUnhelpfulComment);
 router.post("/bookmark/:id", protectRoute, bookmarkUnbookmark);
 router.get("/:id", protectRoute, getPostById);
+router.put("/:id", protectRoute, editPost);
+router.delete("/:id/comment/:commentId", protectRoute, deleteComment);
 router.delete("/:id", protectRoute, deletePost);
 
 export default router;
