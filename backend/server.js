@@ -10,6 +10,7 @@ import postRoutes from "./routes/post.route.js";
 import notificationRoutes from "./routes/notification.route.js";
 import messageRoutes from "./routes/message.route.js";
 import topicRoutes from "./routes/topic.route.js";
+import communityRoutes from "./routes/community.route.js";
 
 import connectMongoDB from "./db/connectMongoDB.js";
 
@@ -47,6 +48,7 @@ app.use("/api/posts", postRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/messages", messageRoutes);
 app.use("/api/topics", topicRoutes);
+app.use("/api/communities", communityRoutes);
 
 if (process.env.NODE_ENV === "production") {
 	app.use(express.static(path.join(__dirname, "/frontend/dist")));

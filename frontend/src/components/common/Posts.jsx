@@ -6,7 +6,7 @@ import PostSkeleton from "../skeletons/PostSkeleton";
 import LoadingSpinner from "./LoadingSpinner";
 
 // feeds that the server splits into pages
-const PAGED = ["forYou", "following", "latest", "discussions", "topics", "topic"];
+const PAGED = ["forYou", "following", "latest", "discussions", "topics", "topic", "community", "opportunities"];
 
 const EMPTY_TEXT = {
 	following: "Nothing here yet. Follow some people and their posts will show up here.",
@@ -14,13 +14,22 @@ const EMPTY_TEXT = {
 	latest: "No posts yet. Be the first to post.",
 	forYou: "No posts yet. Be the first to post.",
 	topic: "No posts in this topic yet. Be the first.",
+	community: "No posts here yet. Start the conversation.",
+	opportunities: "No open opportunities match. Try another filter, or post one yourself.",
 	posts: "No posts here yet.",
 	likes: "No liked posts yet.",
 	bookmarks: "You haven't saved anything yet. Tap the bookmark on a post to keep it here.",
 };
 
-const Posts = ({ feedType, username, userId, topic }) => {
+const Posts = ({ feedType, username, userId, topic, slug, kind, q }) => {
 	const getEndpoint = (page) => {
+		if (feedType === "community") return `/api/posts/feed?mode=community&community=${encodeURIComponent(slug)}&page=${page}`;
+		if (feedType === "opportunities") {
+			const params = new URLSearchParams({ page });
+			if (kind) params.set("kind", kind);
+			if (q) params.set("q", q);
+			return `/api/posts/opportunities?${params}`;
+		}
 		if (feedType === "topic") return `/api/posts/feed?mode=topic&topic=${encodeURIComponent(topic)}&page=${page}`;
 		if (PAGED.includes(feedType)) return `/api/posts/feed?mode=${feedType}&page=${page}`;
 		if (feedType === "posts") return `/api/posts/user/${username}`;
@@ -30,7 +39,7 @@ const Posts = ({ feedType, username, userId, topic }) => {
 	};
 
 	const { data, isLoading, error, fetchNextPage, hasNextPage, isFetchingNextPage, refetch } = useInfiniteQuery({
-		queryKey: ["posts", feedType, username, userId, topic],
+		queryKey: ["posts", feedType, username, userId, topic, slug, kind, q],
 		initialPageParam: 1,
 		queryFn: async ({ pageParam }) => {
 			const res = await fetch(getEndpoint(pageParam));

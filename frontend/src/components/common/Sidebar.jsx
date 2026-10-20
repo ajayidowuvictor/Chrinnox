@@ -1,7 +1,7 @@
 import Logo from "../svgs/Logo";
 
 import { MdHomeFilled } from "react-icons/md";
-import { IoNotifications, IoMail, IoSearch, IoSettingsSharp } from "react-icons/io5";
+import { IoNotifications, IoMail, IoSearch, IoSettingsSharp, IoPeople, IoBriefcase } from "react-icons/io5";
 import { FaUser, FaBookmark } from "react-icons/fa";
 import { Link, NavLink, useLocation } from "react-router-dom";
 import { BiLogOut } from "react-icons/bi";
@@ -92,7 +92,25 @@ const Sidebar = () => {
 							className='flex gap-3 items-center hover:bg-stone-900 transition-all rounded-full duration-300 py-2 pl-2 pr-4 max-w-fit cursor-pointer'
 						>
 							<IoSearch className='w-6 h-6' />
-							<span className='text-lg hidden md:block'>Search</span>
+							<span className='text-lg hidden md:block'>Explore</span>
+						</Link>
+					</li>
+					<li className='flex justify-center md:justify-start'>
+						<Link
+							to='/search?tab=opportunities'
+							className='flex gap-3 items-center hover:bg-stone-900 transition-all rounded-full duration-300 py-2 pl-2 pr-4 max-w-fit cursor-pointer'
+						>
+							<IoBriefcase className='w-6 h-6' />
+							<span className='text-lg hidden md:block'>Opportunities</span>
+						</Link>
+					</li>
+					<li className='flex justify-center md:justify-start'>
+						<Link
+							to='/search?tab=communities'
+							className='flex gap-3 items-center hover:bg-stone-900 transition-all rounded-full duration-300 py-2 pl-2 pr-4 max-w-fit cursor-pointer'
+						>
+							<IoPeople className='w-6 h-6' />
+							<span className='text-lg hidden md:block'>Communities</span>
 						</Link>
 					</li>
 					<li className='flex justify-center md:justify-start'>
@@ -196,7 +214,7 @@ const Sidebar = () => {
 				<NavLink to='/' end className={tabClass} aria-label='Home'>
 					<MdHomeFilled className='w-7 h-7' />
 				</NavLink>
-				<NavLink to='/search' className={tabClass} aria-label='Search'>
+				<NavLink to='/search' className={tabClass} aria-label='Explore'>
 					<IoSearch className='w-6 h-6' />
 				</NavLink>
 				<NavLink to='/messages' className={tabClass} aria-label='Messages'>

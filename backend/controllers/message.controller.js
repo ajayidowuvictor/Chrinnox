@@ -1,5 +1,6 @@
 import Message from "../models/message.model.js";
 import Post from "../models/post.model.js";
+import Community from "../models/community.model.js";
 import { isBlockedBetween } from "../lib/utils/relations.js";
 import { findUserByUsername } from "../lib/utils/findUser.js";
 import { v2 as cloudinary } from "cloudinary";
@@ -63,13 +64,28 @@ export const getMessages = async (req, res) => {
 			.limit(200)
 			.populate({
 				path: "post",
-				select: "text img imgs user",
+				select: "text img imgs user community",
 				populate: { path: "user", select: PUBLIC_FIELDS },
 			});
 
 		await Message.updateMany({ from: other._id, to: me, read: false }, { read: true });
 
-		res.status(200).json({ user: other, messages: latest.reverse() });
+		// a shared post from a members-only community is hidden from people who aren't members
+		const messages = latest.reverse().map((m) => m.toObject());
+		const communityIds = [...new Set(messages.map((m) => m.post?.community?.toString()).filter(Boolean))];
+		if (communityIds.length) {
+			const restricted = await Community.find({
+				_id: { $in: communityIds },
+				privacy: "request",
+				members: { $ne: me },
+			}).select("_id");
+			const restrictedSet = new Set(restricted.map((c) => c._id.toString()));
+			messages.forEach((m) => {
+				if (m.post?.community && restrictedSet.has(m.post.community.toString())) m.post = null;
+			});
+		}
+
+		res.status(200).json({ user: other, messages });
 	} catch (error) {
 		console.log("Error in getMessages controller: ", error.message);
 		res.status(500).json({ error: "Internal Server Error" });

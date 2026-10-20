@@ -1,4 +1,4 @@
-import { FaRegComment, FaRegLightbulb, FaLightbulb } from "react-icons/fa";
+import { FaRegComment, FaRegLightbulb, FaLightbulb, FaThumbtack, FaCheckCircle } from "react-icons/fa";
 import { BiRepost } from "react-icons/bi";
 import { FaRegHeart } from "react-icons/fa";
 import { FaRegBookmark, FaBookmark, FaShareNodes } from "react-icons/fa6";
@@ -12,6 +12,7 @@ import { toast } from "react-hot-toast";
 import LoadingSpinner from "./LoadingSpinner";
 import PostText from "./PostText";
 import { formatPostDate } from "../../utils/date";
+import { describeDeadline } from "../../utils/date/deadline";
 import useSafetyActions from "../../hooks/useSafetyActions";
 
 const Post = ({ post }) => {
@@ -28,9 +29,20 @@ const Post = ({ post }) => {
 
 	const isMyPost = authUser._id === post.user._id;
 	const isHelpful = (post.helpful || []).includes(authUser._id);
+	const isQuestion = post.type === "question";
+	const isAnswered = isQuestion && !!post.acceptedComment;
+	const community = post.community; // filled in by the server when the post belongs to a community
+	const isCommunityMod =
+		!!community && (community.owner === authUser._id || (community.moderators || []).includes(authUser._id));
+	const deadline = post.type === "opportunity" ? describeDeadline(post.opportunity?.deadline) : null;
 
 	// replies: most helpful first (ties keep the original order), or newest, or oldest
 	const sortedComments = [...post.comments].sort((a, b) => {
+		// the best answer to a question always comes first
+		if (post.acceptedComment) {
+			if (a._id === post.acceptedComment) return -1;
+			if (b._id === post.acceptedComment) return 1;
+		}
 		if (commentSort === "newest") return post.comments.indexOf(b) - post.comments.indexOf(a);
 		if (commentSort === "oldest") return post.comments.indexOf(a) - post.comments.indexOf(b);
 		return (b.helpful?.length || 0) - (a.helpful?.length || 0) || post.comments.indexOf(a) - post.comments.indexOf(b);
@@ -142,6 +154,31 @@ const Post = ({ post }) => {
 				...p,
 				comments: p.comments.map((c) => (c._id === commentId ? { ...c, helpful } : c)),
 			})),
+		onError: (error) => toast.error(error.message),
+	});
+
+	const { mutate: togglePin } = useMutation({
+		mutationFn: async () => {
+			const res = await fetch(`/api/communities/${community.slug}/pin/${post._id}`, { method: "POST" });
+			const data = await res.json();
+			if (!res.ok) throw new Error(data.error || "Something went wrong");
+			return data;
+		},
+		onSuccess: (data) => {
+			toast.success(data.pinned ? "Pinned to the top of the community" : "Unpinned");
+			queryClient.invalidateQueries({ queryKey: ["posts"] });
+		},
+		onError: (error) => toast.error(error.message),
+	});
+
+	const { mutate: chooseBestAnswer } = useMutation({
+		mutationFn: async (commentId) => {
+			const res = await fetch(`/api/posts/${post._id}/accept/${commentId}`, { method: "POST" });
+			const data = await res.json();
+			if (!res.ok) throw new Error(data.error || "Something went wrong");
+			return data;
+		},
+		onSuccess: (data) => updateCachedPost((p) => ({ ...p, acceptedComment: data.acceptedComment || undefined })),
 		onError: (error) => toast.error(error.message),
 	});
 
@@ -264,6 +301,20 @@ const Post = ({ post }) => {
 							{post.repostedBy.username === authUser.username ? "You" : post.repostedBy.fullName} reposted
 						</Link>
 					)}
+					{(post.pinned || community) && (
+						<div className='flex gap-2 items-center text-xs text-slate-500 mb-1 flex-wrap'>
+							{post.pinned && (
+								<span className='flex gap-1 items-center text-amber-400'>
+									<FaThumbtack /> Pinned
+								</span>
+							)}
+							{community && (
+								<Link to={`/c/${community.slug}`} className='hover:underline'>
+									in {community.name}
+								</Link>
+							)}
+						</div>
+					)}
 					<div className='flex gap-2 items-center'>
 						<Link to={`/profile/${postOwner.username}`} className='font-bold'>
 							{postOwner.fullName}
@@ -275,7 +326,7 @@ const Post = ({ post }) => {
 								{formattedDate}
 							</Link>
 						</span>
-						{!isMyPost && (
+						{(!isMyPost || isCommunityMod) && (
 							<div className='dropdown dropdown-end flex justify-end flex-1'>
 								<button tabIndex={0} aria-label='More options'>
 									<IoEllipsisHorizontal className='w-5 h-5 text-slate-500 hover:text-white' />
@@ -284,28 +335,56 @@ const Post = ({ post }) => {
 									tabIndex={0}
 									className='dropdown-content z-[1] menu p-2 shadow bg-base-100 rounded-box w-56 border border-gray-700 mt-6'
 								>
-									<li>
-										<a
-											onClick={() => {
-												document.activeElement?.blur();
-												toggleMute(postOwner._id);
-											}}
-										>
-											Mute @{postOwner.username}
-										</a>
-									</li>
-									<li>
-										<a
-											onClick={() => {
-												document.activeElement?.blur();
-												if (window.confirm(`Block @${postOwner.username}? They won't be able to follow, message or reply to you.`)) {
-													toggleBlock(postOwner._id);
-												}
-											}}
-										>
-											Block @{postOwner.username}
-										</a>
-									</li>
+									{isCommunityMod && (
+										<li>
+											<a
+												onClick={() => {
+													document.activeElement?.blur();
+													togglePin();
+												}}
+											>
+												{post.pinned ? "Unpin from community" : "Pin to community"}
+											</a>
+										</li>
+									)}
+									{isCommunityMod && !isMyPost && (
+										<li>
+											<a
+												onClick={() => {
+													document.activeElement?.blur();
+													if (window.confirm("Remove this post from the community?")) deletePost();
+												}}
+											>
+												Remove post (moderator)
+											</a>
+										</li>
+									)}
+									{!isMyPost && (
+										<li>
+											<a
+												onClick={() => {
+													document.activeElement?.blur();
+													toggleMute(postOwner._id);
+												}}
+											>
+												Mute @{postOwner.username}
+											</a>
+										</li>
+									)}
+									{!isMyPost && (
+										<li>
+											<a
+												onClick={() => {
+													document.activeElement?.blur();
+													if (window.confirm(`Block @${postOwner.username}? They won't be able to follow, message or reply to you.`)) {
+														toggleBlock(postOwner._id);
+													}
+												}}
+											>
+												Block @{postOwner.username}
+											</a>
+										</li>
+									)}
 								</ul>
 							</div>
 						)}
@@ -320,7 +399,40 @@ const Post = ({ post }) => {
 						)}
 					</div>
 					<div className='flex flex-col gap-3 overflow-hidden'>
+						{(post.type === "question" || post.type === "announcement" || post.type === "opportunity") && (
+							<div className='flex gap-2 items-center flex-wrap'>
+								{isQuestion && (
+									<span className={`badge badge-sm ${isAnswered ? "badge-success" : "badge-info"}`}>
+										{isAnswered ? "Answered" : "Question"}
+									</span>
+								)}
+								{post.type === "announcement" && <span className='badge badge-sm badge-warning'>Announcement</span>}
+								{post.type === "opportunity" && (
+									<span className='badge badge-sm badge-primary capitalize'>
+										{post.opportunity?.kind || "Opportunity"}
+									</span>
+								)}
+								{post.type === "opportunity" && post.opportunity?.location && (
+									<span className='text-xs text-slate-400'>📍 {post.opportunity.location}</span>
+								)}
+								{deadline && (
+									<span className={`text-xs ${deadline.closed ? "text-red-400" : "text-amber-400"}`}>
+										{deadline.text}
+									</span>
+								)}
+							</div>
+						)}
 						<PostText text={post.text} />
+						{post.type === "opportunity" && post.opportunity?.link && (
+							<a
+								href={post.opportunity.link}
+								target='_blank'
+								rel='noopener noreferrer nofollow'
+								className='btn btn-primary btn-sm rounded-full text-white w-fit'
+							>
+								Apply / learn more
+							</a>
+						)}
 						{images.length === 1 && (
 							<a href={images[0]} target='_blank' rel='noreferrer'>
 								<img
@@ -397,11 +509,16 @@ const Post = ({ post }) => {
 													</div>
 												</div>
 												<div className='flex flex-col flex-1'>
-													<div className='flex items-center gap-1'>
+													<div className='flex items-center gap-1 flex-wrap'>
 														<span className='font-bold'>{comment.user.fullName}</span>
 														<span className='text-gray-700 text-sm'>
 															@{comment.user.username}
 														</span>
+														{post.acceptedComment === comment._id && (
+															<span className='badge badge-success badge-sm gap-1'>
+																<FaCheckCircle /> Best answer
+															</span>
+														)}
 													</div>
 													<div className='text-sm'>
 														<PostText text={comment.text} />
@@ -418,6 +535,15 @@ const Post = ({ post }) => {
 														{(comment.helpful || []).includes(authUser._id) ? <FaLightbulb /> : <FaRegLightbulb />}
 														Helpful{(comment.helpful || []).length > 0 ? ` · ${comment.helpful.length}` : ""}
 													</button>
+													{isQuestion && isMyPost && (
+														<button
+															type='button'
+															className='text-xs mt-1 w-fit text-slate-500 hover:text-green-400'
+															onClick={() => chooseBestAnswer(comment._id)}
+														>
+															{post.acceptedComment === comment._id ? "Remove best answer" : "Mark as best answer"}
+														</button>
+													)}
 												</div>
 											</div>
 										))}

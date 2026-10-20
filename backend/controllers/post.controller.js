@@ -6,6 +6,16 @@ import { isBlockedBetween, buildFeedFilter } from "../lib/utils/relations.js";
 import { extractTopics, normalizeTopic, isValidTopic } from "../lib/utils/topics.js";
 import { v2 as cloudinary } from "cloudinary";
 import mongoose from "mongoose";
+import Community from "../models/community.model.js";
+import { OPPORTUNITY_KINDS, POST_TYPES } from "../lib/constants.js";
+import { escapeRegex } from "../lib/utils/findUser.js";
+import {
+	buildCommunityVisibility,
+	canModerate,
+	getMyCommunityIds,
+	getRestrictedCommunityIds,
+	roleOf,
+} from "../lib/utils/communities.js";
 
 const MAX_POST_LENGTH = 500;
 const MAX_COMMENT_LENGTH = 300;
@@ -27,6 +37,45 @@ export const createPost = async (req, res) => {
 		if (!text && images.length === 0) {
 			return res.status(400).json({ error: "Post must have text or image" });
 		}
+		const type = POST_TYPES.includes(req.body.type) ? req.body.type : "post";
+
+		let community = null;
+		if (req.body.communitySlug) {
+			community = await Community.findOne({ slug: String(req.body.communitySlug).toLowerCase() });
+			if (!community) return res.status(404).json({ error: "Community not found" });
+			if (!["owner", "moderator", "member"].includes(roleOf(community, userId))) {
+				return res.status(403).json({ error: "Join this community to post in it" });
+			}
+		}
+		if (type === "announcement" && !(community && canModerate(community, userId))) {
+			return res.status(400).json({ error: "Announcements can only be posted by community moderators" });
+		}
+		if ((type === "question" || type === "opportunity") && !text) {
+			return res.status(400).json({ error: "Please describe it in the text box" });
+		}
+
+		let opportunity;
+		if (type === "opportunity") {
+			const o = req.body.opportunity || {};
+			if (!OPPORTUNITY_KINDS.includes(o.kind)) {
+				return res.status(400).json({ error: "Choose what kind of opportunity this is" });
+			}
+			const location = String(o.location ?? "").trim().slice(0, 80);
+			const link = String(o.link ?? "").trim();
+			if (link && (link.length > 300 || !/^https?:\/\/\S+$/i.test(link))) {
+				return res.status(400).json({ error: "The link must start with http:// or https://" });
+			}
+			let deadline;
+			if (o.deadline) {
+				deadline = new Date(o.deadline);
+				if (Number.isNaN(deadline.getTime())) return res.status(400).json({ error: "Invalid deadline" });
+				if (deadline.getTime() < Date.now() - 24 * 60 * 60 * 1000) {
+					return res.status(400).json({ error: "The deadline can't be in the past" });
+				}
+			}
+			opportunity = { kind: o.kind, location: location || undefined, link: link || undefined, deadline };
+		}
+
 		if (images.length > MAX_IMAGES) {
 			return res.status(400).json({ error: `You can attach at most ${MAX_IMAGES} photos` });
 		}
@@ -55,6 +104,9 @@ export const createPost = async (req, res) => {
 			imgs: urls,
 			img: urls[0], // kept so older screens still work
 			topics: extractTopics(text),
+			type,
+			opportunity,
+			community: community?._id,
 		});
 
 		await newPost.save();
@@ -72,7 +124,12 @@ export const deletePost = async (req, res) => {
 			return res.status(404).json({ error: "Post not found" });
 		}
 
-		if (post.user.toString() !== req.user._id.toString()) {
+		let allowed = post.user.toString() === req.user._id.toString();
+		if (!allowed && post.community) {
+			const community = await Community.findById(post.community);
+			allowed = !!community && canModerate(community, req.user._id);
+		}
+		if (!allowed) {
 			return res.status(401).json({ error: "You are not authorized to delete this post" });
 		}
 
@@ -87,6 +144,7 @@ export const deletePost = async (req, res) => {
 		}
 
 		await Post.findByIdAndDelete(req.params.id);
+		await Community.updateOne({ pinnedPost: post._id }, { $unset: { pinnedPost: 1 } });
 
 		res.status(200).json({ message: "Post deleted successfully" });
 	} catch (error) {
@@ -194,7 +252,9 @@ export const likeUnlikePost = async (req, res) => {
 
 export const getAllPosts = async (req, res) => {
 	try {
-		const posts = await Post.find(await buildFeedFilter(req.user._id))
+		const posts = await Post.find({
+			$and: [await buildFeedFilter(req.user._id), await buildCommunityVisibility(req.user._id)],
+		})
 			.sort({ createdAt: -1 })
 			.limit(FEED_LIMIT)
 			.populate({
@@ -204,7 +264,8 @@ export const getAllPosts = async (req, res) => {
 			.populate({
 				path: "comments.user",
 				select: "-password",
-			});
+			})
+			.populate({ path: "community", select: "name slug owner moderators privacy" });
 
 		if (posts.length === 0) {
 			return res.status(200).json([]);
@@ -224,7 +285,9 @@ export const getLikedPosts = async (req, res) => {
 		const user = await User.findById(userId);
 		if (!user) return res.status(404).json({ error: "User not found" });
 
-		const likedPosts = await Post.find({ _id: { $in: user.likedPosts } })
+		const likedPosts = await Post.find({
+			$and: [{ _id: { $in: user.likedPosts } }, await buildCommunityVisibility(req.user._id)],
+		})
 			.populate({
 				path: "user",
 				select: "-password",
@@ -232,7 +295,8 @@ export const getLikedPosts = async (req, res) => {
 			.populate({
 				path: "comments.user",
 				select: "-password",
-			});
+			})
+			.populate({ path: "community", select: "name slug owner moderators privacy" });
 
 		res.status(200).json(likedPosts);
 	} catch (error) {
@@ -251,7 +315,11 @@ export const getFollowingPosts = async (req, res) => {
 
 		const feedFilter = await buildFeedFilter(userId);
 		const feedPosts = await Post.find({
-			$and: [{ $or: [{ user: { $in: following } }, { reposts: { $in: following } }] }, feedFilter],
+			$and: [
+				{ $or: [{ user: { $in: following } }, { reposts: { $in: following } }] },
+				feedFilter,
+				await buildCommunityVisibility(userId),
+			],
 		})
 			.sort({ createdAt: -1 })
 			.limit(FEED_LIMIT)
@@ -262,7 +330,8 @@ export const getFollowingPosts = async (req, res) => {
 			.populate({
 				path: "comments.user",
 				select: "-password",
-			});
+			})
+			.populate({ path: "community", select: "name slug owner moderators privacy" });
 
 		// label posts that are here because someone you follow reposted them
 		const followingSet = new Set(following.map((id) => id.toString()));
@@ -299,7 +368,9 @@ export const getUserPosts = async (req, res) => {
 		const user = await findUserByUsername(username);
 		if (!user) return res.status(404).json({ error: "User not found" });
 
-		const posts = await Post.find({ $or: [{ user: user._id }, { reposts: user._id }] })
+		const posts = await Post.find({
+			$and: [{ $or: [{ user: user._id }, { reposts: user._id }] }, await buildCommunityVisibility(req.user._id)],
+		})
 			.sort({ createdAt: -1 })
 			.limit(FEED_LIMIT)
 			.populate({
@@ -309,7 +380,8 @@ export const getUserPosts = async (req, res) => {
 			.populate({
 				path: "comments.user",
 				select: "-password",
-			});
+			})
+			.populate({ path: "community", select: "name slug owner moderators privacy" });
 
 		const result = posts.map((p) => {
 			const obj = p.toObject();
@@ -395,7 +467,9 @@ export const getBookmarkedPosts = async (req, res) => {
 		const user = await User.findById(req.user._id).select("bookmarks");
 		if (!user) return res.status(404).json({ error: "User not found" });
 
-		const posts = await Post.find({ _id: { $in: user.bookmarks } })
+		const posts = await Post.find({
+			$and: [{ _id: { $in: user.bookmarks } }, await buildCommunityVisibility(req.user._id)],
+		})
 			.populate({
 				path: "user",
 				select: "-password",
@@ -403,7 +477,8 @@ export const getBookmarkedPosts = async (req, res) => {
 			.populate({
 				path: "comments.user",
 				select: "-password",
-			});
+			})
+			.populate({ path: "community", select: "name slug owner moderators privacy" });
 
 		// most recently saved first
 		const order = user.bookmarks.map((id) => id.toString());
@@ -431,10 +506,18 @@ export const getPostById = async (req, res) => {
 			.populate({
 				path: "comments.user",
 				select: "-password",
-			});
+			})
+			.populate({ path: "community", select: "name slug owner moderators privacy" });
 
 		if (!post) {
 			return res.status(404).json({ error: "Post not found" });
+		}
+
+		if (post.community) {
+			const restricted = await getRestrictedCommunityIds(req.user._id);
+			if (restricted.some((cid) => cid.equals(post.community._id))) {
+				return res.status(403).json({ error: "This post is in a members-only community" });
+			}
 		}
 
 		res.status(200).json(post);
@@ -504,12 +587,13 @@ export const helpfulUnhelpfulComment = async (req, res) => {
 // ---------------- Feed modes with pages ----------------
 
 const FEED_PAGE_SIZE = 15;
-const FEED_MODES = ["forYou", "following", "latest", "discussions", "topics", "topic"];
+const FEED_MODES = ["forYou", "following", "latest", "discussions", "topics", "topic", "community"];
 
 const populateFeed = (query) =>
 	query
 		.populate({ path: "user", select: "-password" })
-		.populate({ path: "comments.user", select: "-password" });
+		.populate({ path: "comments.user", select: "-password" })
+		.populate({ path: "community", select: "name slug owner moderators privacy" });
 
 export const getFeed = async (req, res) => {
 	try {
@@ -523,13 +607,28 @@ export const getFeed = async (req, res) => {
 		const topicSet = new Set(me.followedTopics || []);
 		const filter = await buildFeedFilter(meId);
 
+		// community posts only show up in a community's own feed, or in the feeds of its members
+		let community = null;
+		let extra;
+		if (mode === "community") {
+			community = await Community.findOne({ slug: String(req.query.community ?? "").toLowerCase() });
+			if (!community) return res.status(404).json({ error: "Community not found" });
+			if (community.privacy === "request" && !["owner", "moderator", "member"].includes(roleOf(community, meId))) {
+				return res.status(403).json({ error: "Join this community to see its posts" });
+			}
+			extra = { community: community._id };
+		} else {
+			const mine = await getMyCommunityIds(meId);
+			extra = { $or: [{ community: null }, { community: { $in: mine } }] };
+		}
+
 		let posts = [];
 		let hasMore = false;
 
 		// modes that the database can sort and page by itself
 		const pagedFind = async (conditions, sort = { createdAt: -1 }) => {
 			const rows = await populateFeed(
-				Post.find({ $and: [conditions, filter] })
+				Post.find({ $and: [conditions, filter, extra] })
 					.sort(sort)
 					.skip(skip)
 					.limit(FEED_PAGE_SIZE + 1)
@@ -541,7 +640,7 @@ export const getFeed = async (req, res) => {
 		// modes that need ranking: look at the newest posts, score them, then page
 		const rankedFind = async (conditions, scoreOf) => {
 			const candidates = await populateFeed(
-				Post.find({ $and: [conditions, filter] })
+				Post.find({ $and: [conditions, filter, extra] })
 					.sort({ createdAt: -1 })
 					.limit(300)
 			);
@@ -555,7 +654,13 @@ export const getFeed = async (req, res) => {
 
 		const hoursOld = (p) => (Date.now() - new Date(p.createdAt).getTime()) / 36e5;
 
-		if (mode === "latest") {
+		if (mode === "community") {
+			posts = await pagedFind({});
+			if (page === 1 && community.pinnedPost) {
+				const pinned = await populateFeed(Post.findById(community.pinnedPost));
+				if (pinned) posts = [pinned, ...posts.filter((p) => !p._id.equals(pinned._id))];
+			}
+		} else if (mode === "latest") {
 			posts = await pagedFind({});
 		} else if (mode === "following") {
 			const following = me.following;
@@ -590,6 +695,7 @@ export const getFeed = async (req, res) => {
 		// label posts that are here because someone you follow reposted them
 		const result = posts.map((p) => {
 			const obj = p.toObject();
+			if (community?.pinnedPost && p._id.equals(community.pinnedPost)) obj.pinned = true;
 			if (mode === "following" && !followingSet.has(p.user._id.toString())) {
 				const reposterId = p.reposts.find((id) => followingSet.has(id.toString()));
 				if (reposterId) obj._reposterId = reposterId.toString();
@@ -610,6 +716,79 @@ export const getFeed = async (req, res) => {
 		res.status(200).json({ posts: result, hasMore, page });
 	} catch (error) {
 		console.log("Error in getFeed controller: ", error);
+		res.status(500).json({ error: "Internal server error" });
+	}
+};
+
+// ---------------- Opportunities board ----------------
+
+export const getOpportunities = async (req, res) => {
+	try {
+		const meId = req.user._id;
+		const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+
+		const conditions = { type: "opportunity" };
+		if (OPPORTUNITY_KINDS.includes(req.query.kind)) conditions["opportunity.kind"] = req.query.kind;
+
+		const q = String(req.query.q ?? "").trim().slice(0, 60);
+		if (q) {
+			const regex = new RegExp(escapeRegex(q), "i");
+			conditions.$or = [{ text: regex }, { "opportunity.location": regex }];
+		}
+
+		const and = [conditions, await buildFeedFilter(meId), await buildCommunityVisibility(meId)];
+		if (req.query.all !== "1") {
+			// hide opportunities whose deadline has passed
+			and.push({ $or: [{ "opportunity.deadline": null }, { "opportunity.deadline": { $gte: new Date() } }] });
+		}
+
+		const rows = await populateFeed(
+			Post.find({ $and: and })
+				.sort({ createdAt: -1 })
+				.skip((page - 1) * FEED_PAGE_SIZE)
+				.limit(FEED_PAGE_SIZE + 1)
+		);
+		res.status(200).json({
+			posts: rows.slice(0, FEED_PAGE_SIZE).map((p) => p.toObject()),
+			hasMore: rows.length > FEED_PAGE_SIZE,
+			page,
+		});
+	} catch (error) {
+		console.log("Error in getOpportunities controller: ", error);
+		res.status(500).json({ error: "Internal server error" });
+	}
+};
+
+// ---------------- Questions: best answer ----------------
+
+export const acceptAnswer = async (req, res) => {
+	try {
+		const userId = req.user._id;
+		const { id, commentId } = req.params;
+		if (!mongoose.isValidObjectId(id) || !mongoose.isValidObjectId(commentId)) {
+			return res.status(404).json({ error: "Reply not found" });
+		}
+
+		const post = await Post.findById(id);
+		if (!post) return res.status(404).json({ error: "Post not found" });
+		if (post.type !== "question") return res.status(400).json({ error: "Only questions have a best answer" });
+		if (post.user.toString() !== userId.toString()) {
+			return res.status(403).json({ error: "Only the person who asked can choose the best answer" });
+		}
+
+		const comment = post.comments.id(commentId);
+		if (!comment) return res.status(404).json({ error: "Reply not found" });
+
+		const same = post.acceptedComment && post.acceptedComment.equals(comment._id);
+		post.acceptedComment = same ? undefined : comment._id;
+		await post.save();
+
+		if (!same && comment.user.toString() !== userId.toString()) {
+			await new Notification({ from: userId, to: comment.user, type: "accepted" }).save();
+		}
+		res.status(200).json({ acceptedComment: post.acceptedComment ?? null });
+	} catch (error) {
+		console.log("Error in acceptAnswer controller: ", error);
 		res.status(500).json({ error: "Internal server error" });
 	}
 };

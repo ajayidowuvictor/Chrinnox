@@ -84,6 +84,7 @@ const NotificationPage = () => {
 							{notification.type === "comment" && <FaComment className='w-7 h-7 text-sky-500' />}
 							{notification.type === "repost" && <BiRepost className='w-8 h-8 text-green-500' />}
 							{notification.type === "helpful" && <FaLightbulb className='w-7 h-7 text-amber-400' />}
+							{notification.type === "accepted" && <FaLightbulb className='w-7 h-7 text-green-400' />}
 							<Link to={`/profile/${notification.from.username}`}>
 								<div className='avatar'>
 									<div className='w-8 rounded-full'>
@@ -100,6 +101,8 @@ const NotificationPage = () => {
 										? "reposted your post"
 										: notification.type === "helpful"
 										? "found your contribution helpful"
+										: notification.type === "accepted"
+										? "marked your reply as the best answer"
 										: "commented on your post"}
 								</div>
 							</Link>

@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import { OPPORTUNITY_KINDS, POST_TYPES } from "../lib/constants.js";
 
 const postSchema = new mongoose.Schema(
 	{
@@ -24,6 +25,26 @@ const postSchema = new mongoose.Schema(
 				ref: "User",
 			},
 		],
+		type: {
+			type: String,
+			enum: POST_TYPES,
+			default: "post",
+		},
+		// extra details for "opportunity" posts
+		opportunity: {
+			kind: { type: String, enum: OPPORTUNITY_KINDS },
+			location: { type: String, maxLength: 80 },
+			link: { type: String, maxLength: 300 },
+			deadline: { type: Date },
+		},
+		community: {
+			type: mongoose.Schema.Types.ObjectId,
+			ref: "Community",
+		},
+		// for "question" posts: the reply the asker chose as the best answer
+		acceptedComment: {
+			type: mongoose.Schema.Types.ObjectId,
+		},
 		topics: [
 			{
 				type: String,

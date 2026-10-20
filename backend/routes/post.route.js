@@ -15,6 +15,8 @@ import {
 	getBookmarkedPosts,
 	getPostById,
 	getFeed,
+	getOpportunities,
+	acceptAnswer,
 	helpfulUnhelpful,
 	helpfulUnhelpfulComment,
 } from "../controllers/post.controller.js";
@@ -22,6 +24,7 @@ import {
 const router = express.Router();
 
 router.get("/feed", protectRoute, getFeed);
+router.get("/opportunities", protectRoute, getOpportunities);
 router.get("/all", protectRoute, getAllPosts);
 router.get("/following", protectRoute, getFollowingPosts);
 router.get("/bookmarks", protectRoute, getBookmarkedPosts);
@@ -35,6 +38,7 @@ router.post("/like/:id", protectRoute, likeUnlikePost);
 router.post("/comment/:id", commentLimiter, protectRoute, commentOnPost);
 router.post("/repost/:id", protectRoute, repostUnrepost);
 router.post("/helpful/:id", protectRoute, helpfulUnhelpful);
+router.post("/:id/accept/:commentId", protectRoute, acceptAnswer);
 router.post("/comment/:postId/:commentId/helpful", protectRoute, helpfulUnhelpfulComment);
 router.post("/bookmark/:id", protectRoute, bookmarkUnbookmark);
 router.get("/:id", protectRoute, getPostById);
