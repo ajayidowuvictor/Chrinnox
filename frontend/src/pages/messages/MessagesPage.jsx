@@ -1,13 +1,15 @@
 import { useEffect, useRef, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "react-hot-toast";
 
 import LoadingSpinner from "../../components/common/LoadingSpinner";
 import { formatPostDate } from "../../utils/date";
+import { compressImage } from "../../utils/image";
 
 import { FaArrowLeft } from "react-icons/fa6";
-import { IoSend } from "react-icons/io5";
+import { IoSend, IoCloseSharp } from "react-icons/io5";
+import { CiImageOn } from "react-icons/ci";
 
 const getJson = async (url) => {
 	const res = await fetch(url);
@@ -16,10 +18,42 @@ const getJson = async (url) => {
 	return data;
 };
 
-// ---------- list of conversations + start a new one ----------
+// small preview of a post that was shared in a chat
+const SharedPostCard = ({ post, mine }) => {
+	if (!post) {
+		return <p className='text-sm italic opacity-80'>This post is no longer available.</p>;
+	}
+	const image = post.imgs?.[0] || post.img;
+	return (
+		<Link
+			to={`/post/${post._id}`}
+			className={`block rounded-xl overflow-hidden border ${mine ? "border-sky-300 bg-sky-600" : "border-gray-600 bg-stone-900"}`}
+		>
+			{image && <img src={image} className='w-full h-32 object-cover' alt='' />}
+			<div className='p-2'>
+				<p className='text-xs font-bold truncate'>
+					{post.user?.fullName} <span className='font-normal opacity-70'>@{post.user?.username}</span>
+				</p>
+				{post.text && <p className='text-sm line-clamp-3 break-words'>{post.text}</p>}
+			</div>
+		</Link>
+	);
+};
+
+// ---------- list of conversations + people search ----------
 const ConversationList = () => {
 	const navigate = useNavigate();
-	const [newUsername, setNewUsername] = useState("");
+	const [searchParams] = useSearchParams();
+	const shareId = searchParams.get("share");
+	const suffix = shareId ? `?share=${shareId}` : "";
+
+	const [query, setQuery] = useState("");
+	const [debounced, setDebounced] = useState("");
+
+	useEffect(() => {
+		const timer = setTimeout(() => setDebounced(query.trim().replace(/^@/, "")), 300);
+		return () => clearTimeout(timer);
+	}, [query]);
 
 	const { data: conversations, isLoading } = useQuery({
 		queryKey: ["conversations"],
@@ -27,67 +61,111 @@ const ConversationList = () => {
 		refetchInterval: 10000,
 	});
 
-	const startChat = (e) => {
-		e.preventDefault();
-		const name = newUsername.trim().replace(/^@/, "");
-		if (name) navigate(`/messages/${name}`);
-	};
+	const { data: found, isFetching: isSearching } = useQuery({
+		queryKey: ["search", debounced],
+		queryFn: () => getJson(`/api/users/search?q=${encodeURIComponent(debounced)}`),
+		enabled: debounced.length > 0,
+	});
 
 	return (
 		<>
 			<div className='p-4 border-b border-gray-700'>
-				<p className='font-bold'>Messages</p>
+				<p className='font-bold'>{shareId ? "Send post to..." : "Messages"}</p>
+				{shareId && (
+					<p className='text-sm text-slate-500'>
+						Choose who gets this post.{" "}
+						<button className='text-sky-500' onClick={() => navigate("/messages")}>
+							Cancel
+						</button>
+					</p>
+				)}
 			</div>
 
-			<form onSubmit={startChat} className='flex gap-2 p-4 border-b border-gray-700'>
+			<div className='p-4 border-b border-gray-700'>
 				<input
 					type='text'
-					className='input input-bordered rounded-full flex-1 input-sm'
-					placeholder='Start a chat: type a username'
-					value={newUsername}
-					onChange={(e) => setNewUsername(e.target.value)}
+					className='input input-bordered rounded-full w-full input-sm'
+					placeholder='Search people by name or username'
+					value={query}
+					onChange={(e) => setQuery(e.target.value)}
 				/>
-				<button className='btn btn-primary btn-sm rounded-full text-white px-4'>Chat</button>
-			</form>
+			</div>
 
-			{isLoading && (
-				<div className='flex justify-center p-6'>
-					<LoadingSpinner size='lg' />
-				</div>
-			)}
-			{!isLoading && conversations?.length === 0 && (
-				<p className='text-center p-6 text-slate-500'>
-					No messages yet. Open someone&apos;s profile and tap <b>Message</b>, or type a username above.
-				</p>
-			)}
-			{conversations?.map((c) => (
-				<Link
-					key={c.user._id}
-					to={`/messages/${c.user.username}`}
-					className='flex gap-3 items-center p-4 border-b border-gray-700 hover:bg-stone-900'
-				>
-					<div className='avatar'>
-						<div className='w-10 rounded-full'>
-							<img src={c.user.profileImg || "/avatar-placeholder.png"} />
+			{debounced.length > 0 ? (
+				<>
+					{isSearching && (
+						<div className='flex justify-center p-6'>
+							<LoadingSpinner size='lg' />
 						</div>
-					</div>
-					<div className='flex-1 min-w-0'>
-						<div className='flex gap-1 items-center'>
-							<span className='font-bold truncate'>{c.user.fullName}</span>
-							<span className='text-slate-500 text-sm'>@{c.user.username}</span>
-						</div>
-						<p className={`text-sm truncate ${c.unread > 0 ? "text-white font-semibold" : "text-slate-500"}`}>
-							{c.lastMessage.fromMe ? "You: " : ""}
-							{c.lastMessage.text}
-						</p>
-					</div>
-					{c.unread > 0 && (
-						<span className='bg-sky-500 text-white text-xs font-bold rounded-full min-w-5 h-5 px-1 flex items-center justify-center'>
-							{c.unread}
-						</span>
 					)}
-				</Link>
-			))}
+					{!isSearching && found?.length === 0 && (
+						<p className='text-center p-6 text-slate-500'>No one found for &quot;{debounced}&quot;.</p>
+					)}
+					{!isSearching &&
+						found?.map((u) => (
+							<Link
+								key={u._id}
+								to={`/messages/${u.username}${suffix}`}
+								className='flex gap-3 items-center p-4 border-b border-gray-700 hover:bg-stone-900'
+							>
+								<div className='avatar'>
+									<div className='w-10 rounded-full'>
+										<img src={u.profileImg || "/avatar-placeholder.png"} />
+									</div>
+								</div>
+								<div className='min-w-0'>
+									<p className='font-bold truncate'>{u.fullName}</p>
+									<p className='text-sm text-slate-500 truncate'>@{u.username}</p>
+								</div>
+							</Link>
+						))}
+				</>
+			) : (
+				<>
+					{isLoading && (
+						<div className='flex justify-center p-6'>
+							<LoadingSpinner size='lg' />
+						</div>
+					)}
+					{!isLoading && conversations?.length === 0 && (
+						<p className='text-center p-6 text-slate-500'>
+							No messages yet. Search for someone above, or open their profile and tap <b>Message</b>.
+						</p>
+					)}
+					{conversations?.map((c) => (
+						<Link
+							key={c.user._id}
+							to={`/messages/${c.user.username}${suffix}`}
+							className='flex gap-3 items-center p-4 border-b border-gray-700 hover:bg-stone-900'
+						>
+							<div className='avatar'>
+								<div className='w-10 rounded-full'>
+									<img src={c.user.profileImg || "/avatar-placeholder.png"} />
+								</div>
+							</div>
+							<div className='flex-1 min-w-0'>
+								<div className='flex gap-1 items-center'>
+									<span className='font-bold truncate'>{c.user.fullName}</span>
+									<span className='text-slate-500 text-sm'>@{c.user.username}</span>
+								</div>
+								<p
+									className={`text-sm truncate ${
+										c.unread > 0 ? "text-white font-semibold" : "text-slate-500"
+									}`}
+								>
+									{c.lastMessage.fromMe ? "You: " : ""}
+									{c.lastMessage.text}
+								</p>
+							</div>
+							{c.unread > 0 && (
+								<span className='bg-sky-500 text-white text-xs font-bold rounded-full min-w-5 h-5 px-1 flex items-center justify-center'>
+									{c.unread}
+								</span>
+							)}
+						</Link>
+					))}
+				</>
+			)}
 		</>
 	);
 };
@@ -95,9 +173,16 @@ const ConversationList = () => {
 // ---------- one chat ----------
 const Chat = ({ username }) => {
 	const queryClient = useQueryClient();
+	const navigate = useNavigate();
+	const [searchParams] = useSearchParams();
+	const shareId = searchParams.get("share");
+
 	const { data: authUser } = useQuery({ queryKey: ["authUser"] });
 	const [text, setText] = useState("");
+	const [photo, setPhoto] = useState(null);
+	const [isProcessing, setIsProcessing] = useState(false);
 	const bottomRef = useRef(null);
+	const photoRef = useRef(null);
 
 	const { data, isLoading, error } = useQuery({
 		queryKey: ["messages", username],
@@ -106,12 +191,20 @@ const Chat = ({ username }) => {
 		retry: false,
 	});
 
+	// the post being shared (shown above the box before you send it)
+	const { data: sharedPost } = useQuery({
+		queryKey: ["post", shareId],
+		queryFn: () => getJson(`/api/posts/${shareId}`),
+		enabled: !!shareId,
+		retry: false,
+	});
+
 	const { mutate: send, isPending } = useMutation({
-		mutationFn: async (messageText) => {
+		mutationFn: async (payload) => {
 			const res = await fetch(`/api/messages/${username}`, {
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({ text: messageText }),
+				body: JSON.stringify(payload),
 			});
 			const result = await res.json();
 			if (!res.ok) throw new Error(result.error || "Something went wrong");
@@ -119,6 +212,8 @@ const Chat = ({ username }) => {
 		},
 		onSuccess: () => {
 			setText("");
+			setPhoto(null);
+			if (shareId) navigate(`/messages/${username}`, { replace: true }); // post is sent, drop the draft
 			queryClient.invalidateQueries({ queryKey: ["messages", username] });
 			queryClient.invalidateQueries({ queryKey: ["conversations"] });
 		},
@@ -137,10 +232,31 @@ const Chat = ({ username }) => {
 		bottomRef.current?.scrollIntoView({ behavior: "smooth" });
 	}, [data?.messages?.length]);
 
+	const handlePhoto = async (e) => {
+		const file = e.target.files?.[0];
+		e.target.value = null;
+		if (!file) return;
+		if (!file.type.startsWith("image/")) return toast.error("Please choose an image");
+		setIsProcessing(true);
+		try {
+			setPhoto(await compressImage(file));
+		} catch (err) {
+			toast.error(err.message);
+		} finally {
+			setIsProcessing(false);
+		}
+	};
+
+	const canSend = text.trim() || photo || (shareId && sharedPost);
+
 	const handleSend = (e) => {
 		e.preventDefault();
-		if (isPending || !text.trim()) return;
-		send(text);
+		if (isPending || isProcessing || !canSend) return;
+		send({
+			text,
+			img: photo || undefined,
+			postId: shareId && sharedPost ? shareId : undefined,
+		});
 	};
 
 	if (isLoading) {
@@ -192,12 +308,18 @@ const Chat = ({ username }) => {
 					return (
 						<div key={m._id} className={`flex ${mine ? "justify-end" : "justify-start"}`}>
 							<div
-								className={`max-w-[75%] rounded-2xl px-4 py-2 break-words ${
+								className={`max-w-[75%] rounded-2xl px-3 py-2 break-words flex flex-col gap-2 ${
 									mine ? "bg-sky-500 text-white" : "bg-stone-800 text-white"
 								}`}
 							>
-								<p className='whitespace-pre-wrap'>{m.text}</p>
-								<p className={`text-[10px] mt-1 ${mine ? "text-sky-100" : "text-slate-400"}`}>
+								{m.isPostShare && <SharedPostCard post={m.post} mine={mine} />}
+								{m.img && (
+									<a href={m.img} target='_blank' rel='noreferrer'>
+										<img src={m.img} className='rounded-xl max-h-72 w-full object-cover' alt='' />
+									</a>
+								)}
+								{m.text && <p className='whitespace-pre-wrap px-1'>{m.text}</p>}
+								<p className={`text-[10px] px-1 ${mine ? "text-sky-100" : "text-slate-400"}`}>
 									{formatPostDate(m.createdAt)}
 								</p>
 							</div>
@@ -207,18 +329,50 @@ const Chat = ({ username }) => {
 				<div ref={bottomRef} />
 			</div>
 
+			{(photo || shareId) && (
+				<div className='px-4 pt-3 border-t border-gray-700 flex gap-3 items-start'>
+					{photo && (
+						<div className='relative'>
+							<IoCloseSharp
+								className='absolute -top-1 -right-1 text-white bg-gray-800 rounded-full w-5 h-5 cursor-pointer'
+								onClick={() => setPhoto(null)}
+							/>
+							<img src={photo} className='h-20 rounded object-cover' alt='' />
+						</div>
+					)}
+					{shareId && (
+						<div className='relative flex-1 max-w-xs'>
+							<IoCloseSharp
+								className='absolute -top-1 -right-1 text-white bg-gray-800 rounded-full w-5 h-5 cursor-pointer z-10'
+								onClick={() => navigate(`/messages/${username}`, { replace: true })}
+							/>
+							{sharedPost ? (
+								<SharedPostCard post={sharedPost} mine={false} />
+							) : (
+								<p className='text-sm text-slate-500'>Loading the post to share...</p>
+							)}
+						</div>
+					)}
+				</div>
+			)}
+
 			<form onSubmit={handleSend} className='flex gap-2 items-center p-4 border-t border-gray-700'>
+				<CiImageOn
+					className={`w-8 h-8 shrink-0 ${isProcessing ? "fill-gray-600" : "fill-primary cursor-pointer"}`}
+					onClick={() => !isProcessing && photoRef.current.click()}
+				/>
+				<input type='file' accept='image/*' hidden ref={photoRef} onChange={handlePhoto} />
 				<input
 					type='text'
 					className='input input-bordered rounded-full flex-1'
-					placeholder='Write a message...'
+					placeholder={shareId ? "Add a note (optional)..." : "Write a message..."}
 					maxLength={1000}
 					value={text}
 					onChange={(e) => setText(e.target.value)}
 				/>
 				<button
 					className='btn btn-primary rounded-full text-white'
-					disabled={isPending || !text.trim()}
+					disabled={isPending || isProcessing || !canSend}
 					aria-label='Send'
 				>
 					{isPending ? <LoadingSpinner size='sm' /> : <IoSend className='w-5 h-5' />}

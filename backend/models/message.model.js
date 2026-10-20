@@ -14,8 +14,20 @@ const messageSchema = new mongoose.Schema(
 		},
 		text: {
 			type: String,
-			required: true,
+			default: "",
 			maxLength: 1000,
+		},
+		img: {
+			type: String,
+		},
+		// a post shared into the chat
+		post: {
+			type: mongoose.Schema.Types.ObjectId,
+			ref: "Post",
+		},
+		isPostShare: {
+			type: Boolean,
+			default: false,
 		},
 		read: {
 			type: Boolean,

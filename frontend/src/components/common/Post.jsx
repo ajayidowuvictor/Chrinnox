@@ -4,7 +4,7 @@ import { FaRegHeart } from "react-icons/fa";
 import { FaRegBookmark, FaBookmark, FaShareNodes } from "react-icons/fa6";
 import { FaTrash } from "react-icons/fa";
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "react-hot-toast";
 
@@ -15,6 +15,7 @@ const Post = ({ post }) => {
 	const [comment, setComment] = useState("");
 	const { data: authUser } = useQuery({ queryKey: ["authUser"] });
 	const queryClient = useQueryClient();
+	const navigate = useNavigate();
 	const postOwner = post.user;
 	const isLiked = post.likes.includes(authUser._id);
 	const isReposted = (post.reposts || []).includes(authUser._id);
@@ -161,6 +162,11 @@ const Post = ({ post }) => {
 		e.preventDefault();
 		if (isCommenting) return;
 		commentPost();
+	};
+
+	const handleSendInMessage = () => {
+		if (document.activeElement) document.activeElement.blur(); // closes the menu
+		navigate(`/messages?share=${post._id}`);
 	};
 
 	const handleShare = async () => {
@@ -363,9 +369,22 @@ const Post = ({ post }) => {
 							</div>
 						</div>
 						<div className='flex w-1/3 justify-end gap-3 items-center'>
-							<button onClick={handleShare} aria-label='Copy link to post'>
-								<FaShareNodes className='w-4 h-4 text-slate-500 hover:text-sky-500 cursor-pointer' />
-							</button>
+							<div className='dropdown dropdown-top dropdown-end'>
+								<button tabIndex={0} aria-label='Share post'>
+									<FaShareNodes className='w-4 h-4 text-slate-500 hover:text-sky-500 cursor-pointer' />
+								</button>
+								<ul
+									tabIndex={0}
+									className='dropdown-content z-[1] menu p-2 shadow bg-base-100 rounded-box w-52 border border-gray-700'
+								>
+									<li>
+										<a onClick={handleShare}>Copy link</a>
+									</li>
+									<li>
+										<a onClick={handleSendInMessage}>Send in message</a>
+									</li>
+								</ul>
+							</div>
 							<button onClick={handleSave} aria-label={isSaved ? "Remove bookmark" : "Save post"}>
 								{isSaved ? (
 									<FaBookmark className='w-4 h-4 text-sky-500 cursor-pointer' />

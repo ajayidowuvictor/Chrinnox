@@ -1,5 +1,8 @@
 import Message from "../models/message.model.js";
+import Post from "../models/post.model.js";
 import { findUserByUsername } from "../lib/utils/findUser.js";
+import { v2 as cloudinary } from "cloudinary";
+import mongoose from "mongoose";
 
 const PUBLIC_FIELDS = "username fullName profileImg";
 
@@ -24,7 +27,11 @@ export const getConversations = async (req, res) => {
 			if (!conversations.has(key)) {
 				conversations.set(key, {
 					user: other,
-					lastMessage: { text: m.text, createdAt: m.createdAt, fromMe },
+					lastMessage: {
+						text: m.text || (m.img ? "📷 Photo" : "Shared a post"),
+						createdAt: m.createdAt,
+						fromMe,
+					},
 					unread: 0,
 				});
 			}
@@ -52,7 +59,12 @@ export const getMessages = async (req, res) => {
 			],
 		})
 			.sort({ createdAt: -1 })
-			.limit(200);
+			.limit(200)
+			.populate({
+				path: "post",
+				select: "text img imgs user",
+				populate: { path: "user", select: PUBLIC_FIELDS },
+			});
 
 		await Message.updateMany({ from: other._id, to: me, read: false }, { read: true });
 
@@ -67,15 +79,44 @@ export const sendMessage = async (req, res) => {
 	try {
 		const me = req.user._id;
 		const text = typeof req.body.text === "string" ? req.body.text.trim() : "";
+		let img = req.body.img;
+		const { postId } = req.body;
 
-		if (!text) return res.status(400).json({ error: "Message cannot be empty" });
+		if (!text && !img && !postId) return res.status(400).json({ error: "Message cannot be empty" });
 		if (text.length > 1000) return res.status(400).json({ error: "Message is too long (max 1000 characters)" });
 
 		const other = await findUserByUsername(req.params.username).select("_id");
 		if (!other) return res.status(404).json({ error: "User not found" });
 		if (other._id.equals(me)) return res.status(400).json({ error: "You can't message yourself" });
 
-		const message = await Message.create({ from: me, to: other._id, text });
+		if (img) {
+			if (typeof img !== "string" || !img.startsWith("data:image/")) {
+				return res.status(400).json({ error: "Only image files can be sent" });
+			}
+			try {
+				const uploaded = await cloudinary.uploader.upload(img);
+				img = uploaded.secure_url;
+			} catch (uploadError) {
+				console.log("Cloudinary upload failed: ", uploadError.message);
+				return res.status(400).json({ error: "Photo upload failed. Try a smaller photo." });
+			}
+		}
+
+		let post = null;
+		if (postId) {
+			if (!mongoose.isValidObjectId(postId)) return res.status(400).json({ error: "Invalid post" });
+			post = await Post.findById(postId).select("_id");
+			if (!post) return res.status(404).json({ error: "That post no longer exists" });
+		}
+
+		const message = await Message.create({
+			from: me,
+			to: other._id,
+			text,
+			img: img || undefined,
+			post: post?._id,
+			isPostShare: !!post,
+		});
 		res.status(201).json(message);
 	} catch (error) {
 		console.log("Error in sendMessage controller: ", error.message);
