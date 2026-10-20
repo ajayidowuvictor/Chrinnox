@@ -20,6 +20,10 @@ export const protectRoute = async (req, res, next) => {
 			return res.status(404).json({ error: "User not found" });
 		}
 
+		if (user.suspended) {
+			return res.status(403).json({ error: "This account has been suspended" });
+		}
+
 		req.user = user;
 		next();
 	} catch (err) {

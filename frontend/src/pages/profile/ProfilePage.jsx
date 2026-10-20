@@ -17,6 +17,7 @@ import { formatMemberSinceDate } from "../../utils/date";
 import useFollow from "../../hooks/useFollow";
 import useUpdateUserProfile from "../../hooks/useUpdateUserProfile";
 import useSafetyActions from "../../hooks/useSafetyActions";
+import ReportDialog from "../../components/common/ReportDialog";
 import { IoEllipsisHorizontal } from "react-icons/io5";
 
 const ProfilePage = () => {
@@ -31,6 +32,7 @@ const ProfilePage = () => {
 
 	const { follow, isPending } = useFollow();
 	const { toggleMute, toggleBlock } = useSafetyActions();
+	const [reportOpen, setReportOpen] = useState(false);
 	const { data: authUser } = useQuery({ queryKey: ["authUser"] });
 
 	const {
@@ -78,6 +80,7 @@ const ProfilePage = () => {
 
 	return (
 		<>
+			<ReportDialog target={reportOpen && user ? { type: "user", id: user._id } : null} onClose={() => setReportOpen(false)} />
 			<div className='flex-[4_4_0]  border-r border-gray-700 min-h-screen '>
 				{/* HEADER */}
 				{(isLoading || isRefetching) && <ProfileHeaderSkeleton />}
@@ -181,6 +184,16 @@ const ProfilePage = () => {
 													}}
 												>
 													{authUser.blockedUsers?.includes(user?._id) ? "Unblock" : "Block"} @{user?.username}
+												</a>
+											</li>
+											<li>
+												<a
+													onClick={() => {
+														document.activeElement?.blur();
+														setReportOpen(true);
+													}}
+												>
+													Report @{user?.username}
 												</a>
 											</li>
 										</ul>

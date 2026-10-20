@@ -14,6 +14,7 @@ import PostText from "./PostText";
 import { formatPostDate } from "../../utils/date";
 import { describeDeadline } from "../../utils/date/deadline";
 import useSafetyActions from "../../hooks/useSafetyActions";
+import ReportDialog from "./ReportDialog";
 
 const Post = ({ post }) => {
 	const [comment, setComment] = useState("");
@@ -22,6 +23,7 @@ const Post = ({ post }) => {
 	const queryClient = useQueryClient();
 	const navigate = useNavigate();
 	const { toggleMute, toggleBlock } = useSafetyActions();
+	const [reportTarget, setReportTarget] = useState(null);
 	const postOwner = post.user;
 	const isLiked = post.likes.includes(authUser._id);
 	const isReposted = (post.reposts || []).includes(authUser._id);
@@ -285,6 +287,7 @@ const Post = ({ post }) => {
 
 	return (
 		<>
+			<ReportDialog target={reportTarget} onClose={() => setReportTarget(null)} />
 			<div className='flex gap-2 items-start p-4 border-b border-gray-700'>
 				<div className='avatar'>
 					<Link to={`/profile/${postOwner.username}`} className='w-8 rounded-full overflow-hidden'>
@@ -382,6 +385,18 @@ const Post = ({ post }) => {
 												}}
 											>
 												Block @{postOwner.username}
+											</a>
+										</li>
+									)}
+									{!isMyPost && (
+										<li>
+											<a
+												onClick={() => {
+													document.activeElement?.blur();
+													setReportTarget({ type: "post", id: post._id });
+												}}
+											>
+												Report post
 											</a>
 										</li>
 									)}

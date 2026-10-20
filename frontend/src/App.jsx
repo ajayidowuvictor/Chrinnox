@@ -11,6 +11,7 @@ import PostPage from "./pages/post/PostPage";
 import SearchPage from "./pages/search/SearchPage";
 import SettingsPage from "./pages/settings/SettingsPage";
 import TopicPage from "./pages/topic/TopicPage";
+import AdminPage from "./pages/admin/AdminPage";
 import CommunityPage from "./pages/community/CommunityPage";
 import CreateCommunityPage from "./pages/community/CreateCommunityPage";
 
@@ -64,6 +65,7 @@ function App() {
 				<Route path='/topic/:name' element={authUser ? <TopicPage /> : <Navigate to='/login' />} />
 				<Route path='/c/:slug' element={authUser ? <CommunityPage /> : <Navigate to='/login' />} />
 				<Route path='/communities/new' element={authUser ? <CreateCommunityPage /> : <Navigate to='/login' />} />
+				<Route path='/admin' element={authUser ? <AdminPage /> : <Navigate to='/login' />} />
 				<Route path='/settings' element={authUser ? <SettingsPage /> : <Navigate to='/login' />} />
 				<Route path='/search' element={authUser ? <SearchPage /> : <Navigate to='/login' />} />
 				<Route path='/bookmarks' element={authUser ? <BookmarksPage /> : <Navigate to='/login' />} />

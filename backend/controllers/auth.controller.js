@@ -1,3 +1,4 @@
+import { isAdmin } from "../lib/utils/admin.js";
 import { generateTokenAndSetCookie } from "../lib/utils/generateToken.js";
 import User from "../models/user.model.js";
 import bcrypt from "bcryptjs";
@@ -81,6 +82,10 @@ export const login = async (req, res) => {
 			return res.status(400).json({ error: "Invalid username or password" });
 		}
 
+		if (user.suspended) {
+			return res.status(403).json({ error: "This account has been suspended" });
+		}
+
 		generateTokenAndSetCookie(user._id, res);
 
 		res.status(200).json({
@@ -112,7 +117,7 @@ export const logout = async (req, res) => {
 export const getMe = async (req, res) => {
 	try {
 		const user = await User.findById(req.user._id).select("-password");
-		res.status(200).json(user);
+		res.status(200).json({ ...user.toObject(), isAdmin: isAdmin(user) });
 	} catch (error) {
 		console.log("Error in getMe controller", error.message);
 		res.status(500).json({ error: "Internal Server Error" });

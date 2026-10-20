@@ -1,7 +1,7 @@
 import Logo from "../svgs/Logo";
 
 import { MdHomeFilled } from "react-icons/md";
-import { IoNotifications, IoMail, IoSearch, IoSettingsSharp, IoPeople, IoBriefcase } from "react-icons/io5";
+import { IoNotifications, IoMail, IoSearch, IoSettingsSharp, IoPeople, IoBriefcase, IoShieldCheckmark } from "react-icons/io5";
 import { FaUser, FaBookmark } from "react-icons/fa";
 import { Link, NavLink, useLocation } from "react-router-dom";
 import { BiLogOut } from "react-icons/bi";
@@ -156,6 +156,18 @@ const Sidebar = () => {
 							<span className='text-lg hidden md:block'>Saved</span>
 						</Link>
 					</li>
+
+					{authUser?.isAdmin && (
+						<li className='flex justify-center md:justify-start'>
+							<Link
+								to='/admin'
+								className='flex gap-3 items-center hover:bg-stone-900 transition-all rounded-full duration-300 py-2 pl-2 pr-4 max-w-fit cursor-pointer'
+							>
+								<IoShieldCheckmark className='w-6 h-6' />
+								<span className='text-lg hidden md:block'>Moderation</span>
+							</Link>
+						</li>
+					)}
 
 					<li className='flex justify-center md:justify-start'>
 						<Link

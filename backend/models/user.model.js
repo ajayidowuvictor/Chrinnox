@@ -2,6 +2,7 @@ import mongoose from "mongoose";
 
 const userSchema = new mongoose.Schema(
 	{
+		suspended: { type: Boolean, default: false },
 		username: {
 			type: String,
 			required: true,
