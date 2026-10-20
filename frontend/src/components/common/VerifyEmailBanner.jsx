@@ -17,7 +17,7 @@ const VerifyEmailBanner = () => {
 
 	if (!authUser || authUser.emailVerified) return null;
 	return (
-		<div className='flex gap-3 items-center p-3 border-b border-gray-700 bg-amber-500/10 text-sm'>
+		<div className='flex gap-3 items-center p-3 border-b border-line bg-amber-500/10 text-sm'>
 			<span className='flex-1'>
 				Confirm your email so you can recover your account if you forget your password.
 			</span>

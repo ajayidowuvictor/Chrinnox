@@ -84,15 +84,15 @@ const WelcomePage = () => {
 	const openCommunities = (communities?.communities || []).filter((c) => c.privacy === "open").slice(0, 8);
 
 	return (
-		<div className='flex-[4_4_0] border-l border-r border-gray-700 min-h-screen'>
-			<div className='p-6 border-b border-gray-700'>
+		<div className='flex-[4_4_0] border-l border-r border-line min-h-screen'>
+			<div className='p-6 border-b border-line'>
 				<h1 className='text-2xl font-extrabold'>Welcome to Chrinnox, {authUser.fullName.split(" ")[0]} 👋</h1>
 				<p className='text-slate-400 mt-1'>
 					Pick a few things you care about so your feed isn&apos;t empty. You can change all of this later.
 				</p>
 			</div>
 
-			<section className='p-4 border-b border-gray-700'>
+			<section className='p-4 border-b border-line'>
 				<h2 className='font-bold text-lg mb-1'>Topics</h2>
 				<p className='text-sm text-slate-500 mb-3'>Posts about these will be boosted in your feed.</p>
 				<div className='flex flex-wrap gap-2'>
@@ -104,7 +104,7 @@ const WelcomePage = () => {
 				</div>
 			</section>
 
-			<section className='p-4 border-b border-gray-700'>
+			<section className='p-4 border-b border-line'>
 				<h2 className='font-bold text-lg mb-1'>Communities</h2>
 				<p className='text-sm text-slate-500 mb-3'>Groups to join. You can always find more in Explore.</p>
 				{loadingC && <LoadingSpinner />}
@@ -130,7 +130,7 @@ const WelcomePage = () => {
 				))}
 			</section>
 
-			<section className='p-4 border-b border-gray-700'>
+			<section className='p-4 border-b border-line'>
 				<h2 className='font-bold text-lg mb-1'>People</h2>
 				<p className='text-sm text-slate-500 mb-3'>Follow a few people to fill your Following feed.</p>
 				{loadingP && <LoadingSpinner />}
@@ -161,7 +161,7 @@ const WelcomePage = () => {
 				})}
 			</section>
 
-			<div className='p-4 flex gap-3 justify-end sticky bottom-0 bg-base-100 border-t border-gray-700 pb-20 md:pb-4'>
+			<div className='p-4 flex gap-3 justify-end sticky bottom-0 bg-base-100 border-t border-line pb-20 md:pb-4'>
 				<button className='btn btn-ghost btn-sm' onClick={() => finish()} disabled={finishing}>
 					Skip for now
 				</button>

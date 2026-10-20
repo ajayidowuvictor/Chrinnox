@@ -43,7 +43,7 @@ const AdminPage = () => {
 
 	if (!authUser?.isAdmin)
 		return (
-			<div className='flex-[4_4_0] border-l border-r border-gray-700 min-h-screen p-8 text-center text-slate-500'>
+			<div className='flex-[4_4_0] border-l border-r border-line min-h-screen p-8 text-center text-slate-500'>
 				This page is for admins only.
 			</div>
 		);
@@ -51,12 +51,12 @@ const AdminPage = () => {
 	const confirmThen = (message, fn) => () => window.confirm(message) && fn();
 
 	return (
-		<div className='flex-[4_4_0] border-l border-r border-gray-700 min-h-screen'>
-			<div className='p-4 border-b border-gray-700'>
+		<div className='flex-[4_4_0] border-l border-r border-line min-h-screen'>
+			<div className='p-4 border-b border-line'>
 				<p className='font-bold text-lg'>Moderation</p>
 				<p className='text-xs text-slate-500'>Reports from members, newest first.</p>
 			</div>
-			<div className='flex w-full border-b border-gray-700'>
+			<div className='flex w-full border-b border-line'>
 				{["open", "resolved", "dismissed"].map((s) => (
 					<button key={s} type='button' onClick={() => setStatus(s)} className='flex-1 p-3 capitalize hover:bg-secondary relative'>
 						{s}
@@ -76,7 +76,7 @@ const AdminPage = () => {
 			{reports?.map((r) => {
 				const author = r.targetType === "post" ? r.post?.user || r.user : r.user;
 				return (
-					<div key={r._id} className='p-4 border-b border-gray-700 flex flex-col gap-2'>
+					<div key={r._id} className='p-4 border-b border-line flex flex-col gap-2'>
 						<div className='flex gap-2 items-center flex-wrap text-sm'>
 							<span className='badge badge-warning capitalize'>{r.reason}</span>
 							<span className='badge badge-outline'>{r.targetType}</span>
@@ -88,7 +88,7 @@ const AdminPage = () => {
 						{r.details && <p className='text-sm italic'>&ldquo;{r.details}&rdquo;</p>}
 
 						{r.targetType === "post" && (
-							<div className='border border-gray-700 rounded-xl p-3 text-sm'>
+							<div className='border border-line rounded-xl p-3 text-sm'>
 								{r.postRemoved ? (
 									<span className='text-slate-500'>This post has been removed.</span>
 								) : (

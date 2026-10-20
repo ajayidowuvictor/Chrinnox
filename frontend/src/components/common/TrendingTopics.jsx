@@ -24,7 +24,7 @@ const TrendingTopics = ({ className = "" }) => {
 					<Link
 						key={t.topic}
 						to={`/topic/${encodeURIComponent(t.topic)}`}
-						className='py-1.5 hover:bg-stone-900 rounded px-1 -mx-1'
+						className='py-1.5 hover:bg-hoverbg rounded px-1 -mx-1'
 					>
 						<p className='font-semibold'>#{t.topic}</p>
 						<p className='text-xs text-slate-500'>

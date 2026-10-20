@@ -26,7 +26,7 @@ const OpportunitiesTab = () => {
 	}, [text]);
 	return (
 		<>
-			<div className='p-4 border-b border-gray-700 flex flex-col gap-3'>
+			<div className='p-4 border-b border-line flex flex-col gap-3'>
 				<label className='input input-bordered rounded-full flex items-center gap-2'>
 					<IoSearch className='w-5 h-5 text-slate-500' />
 					<input
@@ -79,8 +79,8 @@ const SearchPage = () => {
 	});
 
 	return (
-		<div className='flex-[4_4_0] border-l border-r border-gray-700 min-h-screen'>
-			<div className='flex w-full border-b border-gray-700 sticky top-0 z-10 bg-base-100'>
+		<div className='flex-[4_4_0] border-l border-r border-line min-h-screen'>
+			<div className='flex w-full border-b border-line sticky top-0 z-10 bg-base-100'>
 				{TABS.map((t) => (
 					<button
 						key={t.id}
@@ -97,7 +97,7 @@ const SearchPage = () => {
 			{tab === "communities" && <CommunitiesTab />}
 			{tab === "people" && (
 			<>
-			<div className='p-4 border-b border-gray-700'>
+			<div className='p-4 border-b border-line'>
 				<label className='input input-bordered rounded-full flex items-center gap-2'>
 					<IoSearch className='w-5 h-5 text-slate-500' />
 					<input
@@ -114,7 +114,7 @@ const SearchPage = () => {
 			{debounced.length === 0 && (
 				<>
 					<p className='text-center p-6 text-slate-500'>Type a name or username to find people.</p>
-					<TrendingTopics className='p-4 border-t border-gray-700' />
+					<TrendingTopics className='p-4 border-t border-line' />
 				</>
 			)}
 			{debounced.length > 0 && isFetching && (
@@ -127,7 +127,7 @@ const SearchPage = () => {
 			)}
 			{!isFetching &&
 				results?.map((user) => (
-					<div key={user._id} className='flex gap-3 items-center p-4 border-b border-gray-700 hover:bg-stone-900'>
+					<div key={user._id} className='flex gap-3 items-center p-4 border-b border-line hover:bg-hoverbg'>
 						<Link to={`/profile/${user.username}`} className='flex gap-3 items-center flex-1 min-w-0'>
 							<div className='avatar'>
 								<div className='w-10 rounded-full'>

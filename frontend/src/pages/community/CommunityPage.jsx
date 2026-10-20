@@ -17,7 +17,7 @@ const api = async (url, method = "GET") => {
 };
 
 const PersonRow = ({ user, children }) => (
-	<div className='flex gap-3 items-center p-4 border-b border-gray-700'>
+	<div className='flex gap-3 items-center p-4 border-b border-line'>
 		<Link to={`/profile/${user.username}`} className='flex gap-3 items-center flex-1 min-w-0'>
 			<div className='avatar'>
 				<div className='w-10 rounded-full'>
@@ -95,7 +95,7 @@ const CommunityPage = () => {
 		);
 	if (error)
 		return (
-			<div className='flex-[4_4_0] border-l border-r border-gray-700 min-h-screen p-6 text-center text-slate-500'>
+			<div className='flex-[4_4_0] border-l border-r border-line min-h-screen p-6 text-center text-slate-500'>
 				{error.message}
 				<div className='mt-4'>
 					<Link to='/search?tab=communities' className='btn btn-outline btn-sm rounded-full'>
@@ -113,8 +113,8 @@ const CommunityPage = () => {
 	];
 
 	return (
-		<div className='flex-[4_4_0] border-l border-r border-gray-700 min-h-screen'>
-			<div className='flex gap-4 items-center p-4 border-b border-gray-700'>
+		<div className='flex-[4_4_0] border-l border-r border-line min-h-screen'>
+			<div className='flex gap-4 items-center p-4 border-b border-line'>
 				<Link to='/search?tab=communities'>
 					<FaArrowLeft className='w-4 h-4' />
 				</Link>
@@ -150,7 +150,7 @@ const CommunityPage = () => {
 				</div>
 			</div>
 
-			<div className='flex w-full border-b border-gray-700'>
+			<div className='flex w-full border-b border-line'>
 				{tabs.map(([id, label]) => (
 					<button key={id} type='button' onClick={() => setTab(id)} className='flex-1 p-3 hover:bg-secondary transition duration-300 relative text-sm'>
 						{label}

@@ -139,7 +139,7 @@ const CreatePost = ({ communitySlug, canAnnounce = false }) => {
 	];
 
 	return (
-		<div className='flex p-4 items-start gap-4 border-b border-gray-700'>
+		<div className='flex p-4 items-start gap-4 border-b border-line'>
 			<div className='avatar'>
 				<div className='w-8 rounded-full'>
 					<img src={authUser.profileImg || "/avatar-placeholder.png"} />
@@ -153,7 +153,7 @@ const CreatePost = ({ communitySlug, canAnnounce = false }) => {
 							type='button'
 							role='tab'
 							aria-selected={type === t.id}
-							className={`btn btn-xs rounded-full ${type === t.id ? "btn-primary text-white" : "btn-ghost border border-gray-700"}`}
+							className={`btn btn-xs rounded-full ${type === t.id ? "btn-primary text-white" : "btn-ghost border border-line"}`}
 							onClick={() => setType(t.id)}
 						>
 							{t.label}
@@ -162,7 +162,7 @@ const CreatePost = ({ communitySlug, canAnnounce = false }) => {
 				</div>
 
 				<textarea
-					className='textarea w-full p-0 text-lg resize-none border-none focus:outline-none  border-gray-800'
+					className='textarea w-full p-0 text-lg resize-none border-none focus:outline-none  border-line'
 					placeholder={TYPE_HINTS[type]}
 					value={text}
 					maxLength={MAX_LENGTH}
@@ -226,7 +226,7 @@ const CreatePost = ({ communitySlug, canAnnounce = false }) => {
 				)}
 				{isProcessing && <p className='text-sm text-slate-500'>Preparing photos...</p>}
 
-				<div className='flex justify-between items-center border-t py-2 border-t-gray-700 gap-2'>
+				<div className='flex justify-between items-center border-t py-2 border-t-line gap-2'>
 					<div className='flex gap-1 items-center'>
 						<CiImageOn
 							className={`w-6 h-6 ${imgs.length >= MAX_IMAGES ? "fill-gray-600" : "fill-primary cursor-pointer"}`}
@@ -268,12 +268,12 @@ const CreatePost = ({ communitySlug, canAnnounce = false }) => {
 					</div>
 				</div>
 				{showEmoji && (
-					<div className='flex flex-wrap gap-1 p-2 rounded-lg border border-gray-700 bg-[#16181C]'>
+					<div className='flex flex-wrap gap-1 p-2 rounded-lg border border-line bg-surface'>
 						{EMOJIS.map((emoji) => (
 							<button
 								key={emoji}
 								type='button'
-								className='text-2xl w-10 h-10 rounded hover:bg-stone-800'
+								className='text-2xl w-10 h-10 rounded hover:bg-hoverbg'
 								onClick={() => setText((t) => (t + emoji).slice(0, MAX_LENGTH))}
 							>
 								{emoji}

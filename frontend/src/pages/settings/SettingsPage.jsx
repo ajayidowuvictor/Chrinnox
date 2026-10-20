@@ -5,6 +5,7 @@ import { toast } from "react-hot-toast";
 
 import LoadingSpinner from "../../components/common/LoadingSpinner";
 import useSafetyActions from "../../hooks/useSafetyActions";
+import { getThemePreference, setThemePreference } from "../../utils/theme";
 
 import { IoCloseSharp } from "react-icons/io5";
 
@@ -26,7 +27,7 @@ const postJson = async (url, body) => {
 };
 
 const Section = ({ title, hint, children }) => (
-	<section className='p-4 border-b border-gray-700'>
+	<section className='p-4 border-b border-line'>
 		<h2 className='font-bold text-lg'>{title}</h2>
 		{hint && <p className='text-sm text-slate-500 mb-3'>{hint}</p>}
 		{children}
@@ -152,6 +153,34 @@ const SecurityForms = () => {
 	);
 };
 
+const AppearanceSection = () => {
+	const [pref, setPref] = useState(getThemePreference);
+	const choose = (value) => {
+		setPref(value);
+		setThemePreference(value);
+	};
+	return (
+		<Section title='Appearance' hint='Remembered on this device.'>
+			<div className='flex flex-wrap gap-2'>
+				{[
+					["dark", "Dark"],
+					["light", "Light"],
+					["system", "Match my device"],
+				].map(([value, label]) => (
+					<button
+						key={value}
+						type='button'
+						onClick={() => choose(value)}
+						className={`btn btn-sm rounded-full ${pref === value ? "btn-primary text-white" : "btn-outline"}`}
+					>
+						{label}
+					</button>
+				))}
+			</div>
+		</Section>
+	);
+};
+
 const SettingsPage = () => {
 	const queryClient = useQueryClient();
 	const { toggleMute, toggleBlock } = useSafetyActions();
@@ -206,15 +235,15 @@ const SettingsPage = () => {
 
 	if (isLoading) {
 		return (
-			<div className='flex-[4_4_0] border-l border-r border-gray-700 min-h-screen flex justify-center p-10'>
+			<div className='flex-[4_4_0] border-l border-r border-line min-h-screen flex justify-center p-10'>
 				<LoadingSpinner size='lg' />
 			</div>
 		);
 	}
 
 	return (
-		<div className='flex-[4_4_0] border-l border-r border-gray-700 min-h-screen'>
-			<div className='p-4 border-b border-gray-700'>
+		<div className='flex-[4_4_0] border-l border-r border-line min-h-screen'>
+			<div className='p-4 border-b border-line'>
 				<p className='font-bold'>Settings</p>
 				<p className='text-sm text-slate-500'>You decide who reaches you and what you see.</p>
 			</div>
@@ -278,6 +307,8 @@ const SettingsPage = () => {
 					emptyText="You haven't blocked anyone."
 				/>
 			</Section>
+
+			<AppearanceSection />
 
 			<SecurityForms />
 

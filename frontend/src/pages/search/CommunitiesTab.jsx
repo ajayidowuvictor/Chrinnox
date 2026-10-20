@@ -34,7 +34,7 @@ const CommunitiesTab = () => {
 
 	return (
 		<>
-			<div className='p-4 border-b border-gray-700 flex flex-col gap-3'>
+			<div className='p-4 border-b border-line flex flex-col gap-3'>
 				<div className='flex gap-2 items-center'>
 					<label className='input input-bordered rounded-full flex items-center gap-2 flex-1'>
 						<IoSearch className='w-5 h-5 text-slate-500' />
@@ -77,7 +77,7 @@ const CommunitiesTab = () => {
 				<Link
 					key={c._id}
 					to={`/c/${c.slug}`}
-					className='block p-4 border-b border-gray-700 hover:bg-stone-900'
+					className='block p-4 border-b border-line hover:bg-hoverbg'
 				>
 					<div className='flex items-center gap-2 flex-wrap'>
 						<span className='font-bold'>{c.name}</span>

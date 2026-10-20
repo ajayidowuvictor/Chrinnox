@@ -47,13 +47,13 @@ const BookmarksPage = () => {
 	});
 
 	return (
-		<div className='flex-[4_4_0] border-l border-r border-gray-700 min-h-screen'>
-			<div className='p-4 border-b border-gray-700'>
+		<div className='flex-[4_4_0] border-l border-r border-line min-h-screen'>
+			<div className='p-4 border-b border-line'>
 				<p className='font-bold'>Saved</p>
 				<p className='text-sm text-slate-500'>Posts you have bookmarked</p>
 			</div>
 
-			<div className='flex gap-2 overflow-x-auto p-3 border-b border-gray-700'>
+			<div className='flex gap-2 overflow-x-auto p-3 border-b border-line'>
 				<button
 					type='button'
 					onClick={() => setActive("all")}
@@ -79,7 +79,7 @@ const BookmarksPage = () => {
 			)}
 
 			{current && (
-				<div className='flex gap-2 justify-end p-3 border-b border-gray-700'>
+				<div className='flex gap-2 justify-end p-3 border-b border-line'>
 					<button
 						type='button'
 						className='btn btn-outline btn-xs rounded-full'

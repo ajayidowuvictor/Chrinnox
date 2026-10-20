@@ -81,7 +81,7 @@ const ProfilePage = () => {
 	return (
 		<>
 			<ReportDialog target={reportOpen && user ? { type: "user", id: user._id } : null} onClose={() => setReportOpen(false)} />
-			<div className='flex-[4_4_0]  border-r border-gray-700 min-h-screen '>
+			<div className='flex-[4_4_0]  border-r border-line min-h-screen '>
 				{/* HEADER */}
 				{(isLoading || isRefetching) && <ProfileHeaderSkeleton />}
 				{!isLoading && !isRefetching && !user && <p className='text-center text-lg mt-4'>User not found</p>}
@@ -161,7 +161,7 @@ const ProfilePage = () => {
 										</button>
 										<ul
 											tabIndex={0}
-											className='dropdown-content z-[1] menu p-2 shadow bg-base-100 rounded-box w-56 border border-gray-700'
+											className='dropdown-content z-[1] menu p-2 shadow bg-base-100 rounded-box w-56 border border-line'
 										>
 											<li>
 												<a
@@ -268,7 +268,7 @@ const ProfilePage = () => {
 									</div>
 								</div>
 							</div>
-							<div className='flex w-full border-b border-gray-700 mt-4'>
+							<div className='flex w-full border-b border-line mt-4'>
 								<div
 									className='flex justify-center flex-1 p-3 hover:bg-secondary transition duration-300 relative cursor-pointer'
 									onClick={() => setFeedType("posts")}

@@ -27,7 +27,7 @@ const SharedPostCard = ({ post, mine }) => {
 	return (
 		<Link
 			to={`/post/${post._id}`}
-			className={`block rounded-xl overflow-hidden border ${mine ? "border-sky-300 bg-sky-600" : "border-gray-600 bg-stone-900"}`}
+			className={`block rounded-xl overflow-hidden border ${mine ? "border-sky-300 bg-sky-600" : "border-line bg-surface"}`}
 		>
 			{image && <img src={image} className='w-full h-32 object-cover' alt='' />}
 			<div className='p-2'>
@@ -69,7 +69,7 @@ const ConversationList = () => {
 
 	return (
 		<>
-			<div className='p-4 border-b border-gray-700'>
+			<div className='p-4 border-b border-line'>
 				<p className='font-bold'>{shareId ? "Send post to..." : "Messages"}</p>
 				{shareId && (
 					<p className='text-sm text-slate-500'>
@@ -81,7 +81,7 @@ const ConversationList = () => {
 				)}
 			</div>
 
-			<div className='p-4 border-b border-gray-700'>
+			<div className='p-4 border-b border-line'>
 				<input
 					type='text'
 					className='input input-bordered rounded-full w-full input-sm'
@@ -106,7 +106,7 @@ const ConversationList = () => {
 							<Link
 								key={u._id}
 								to={`/messages/${u.username}${suffix}`}
-								className='flex gap-3 items-center p-4 border-b border-gray-700 hover:bg-stone-900'
+								className='flex gap-3 items-center p-4 border-b border-line hover:bg-hoverbg'
 							>
 								<div className='avatar'>
 									<div className='w-10 rounded-full'>
@@ -136,7 +136,7 @@ const ConversationList = () => {
 						<Link
 							key={c.user._id}
 							to={`/messages/${c.user.username}${suffix}`}
-							className='flex gap-3 items-center p-4 border-b border-gray-700 hover:bg-stone-900'
+							className='flex gap-3 items-center p-4 border-b border-line hover:bg-hoverbg'
 						>
 							<div className='avatar'>
 								<div className='w-10 rounded-full'>
@@ -150,7 +150,7 @@ const ConversationList = () => {
 								</div>
 								<p
 									className={`text-sm truncate ${
-										c.unread > 0 ? "text-white font-semibold" : "text-slate-500"
+										c.unread > 0 ? "font-semibold" : "text-slate-500"
 									}`}
 								>
 									{c.lastMessage.fromMe ? "You: " : ""}
@@ -282,7 +282,7 @@ const Chat = ({ username }) => {
 
 	return (
 		<div className='flex flex-col h-[100dvh]'>
-			<div className='flex gap-3 items-center p-4 border-b border-gray-700'>
+			<div className='flex gap-3 items-center p-4 border-b border-line'>
 				<Link to='/messages'>
 					<FaArrowLeft className='w-4 h-4' />
 				</Link>
@@ -309,7 +309,7 @@ const Chat = ({ username }) => {
 						<div key={m._id} className={`flex ${mine ? "justify-end" : "justify-start"}`}>
 							<div
 								className={`max-w-[75%] rounded-2xl px-3 py-2 break-words flex flex-col gap-2 ${
-									mine ? "bg-sky-500 text-white" : "bg-stone-800 text-white"
+									mine ? "bg-sky-500 text-white" : "bg-surface text-base-content"
 								}`}
 							>
 								{m.isPostShare && <SharedPostCard post={m.post} mine={mine} />}
@@ -330,7 +330,7 @@ const Chat = ({ username }) => {
 			</div>
 
 			{(photo || shareId) && (
-				<div className='px-4 pt-3 border-t border-gray-700 flex gap-3 items-start'>
+				<div className='px-4 pt-3 border-t border-line flex gap-3 items-start'>
 					{photo && (
 						<div className='relative'>
 							<IoCloseSharp
@@ -356,7 +356,7 @@ const Chat = ({ username }) => {
 				</div>
 			)}
 
-			<form onSubmit={handleSend} className='flex gap-2 items-center p-4 border-t border-gray-700'>
+			<form onSubmit={handleSend} className='flex gap-2 items-center p-4 border-t border-line'>
 				<CiImageOn
 					className={`w-8 h-8 shrink-0 ${isProcessing ? "fill-gray-600" : "fill-primary cursor-pointer"}`}
 					onClick={() => !isProcessing && photoRef.current.click()}
@@ -386,7 +386,7 @@ const MessagesPage = () => {
 	const { username } = useParams();
 
 	return (
-		<div className='flex-[4_4_0] border-l border-r border-gray-700 min-h-screen'>
+		<div className='flex-[4_4_0] border-l border-r border-line min-h-screen'>
 			{username ? <Chat key={username} username={username} /> : <ConversationList />}
 		</div>
 	);

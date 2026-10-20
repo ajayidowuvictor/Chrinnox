@@ -335,7 +335,7 @@ const Post = ({ post }) => {
 		<>
 			<ReportDialog target={reportTarget} onClose={() => setReportTarget(null)} />
 			<SaveToCollectionDialog postId={collectionOpen ? post._id : null} onClose={() => setCollectionOpen(false)} />
-			<div className='flex gap-2 items-start p-4 border-b border-gray-700'>
+			<div className='flex gap-2 items-start p-4 border-b border-line'>
 				<div className='avatar'>
 					<Link to={`/profile/${postOwner.username}`} className='w-8 rounded-full overflow-hidden'>
 						<img src={postOwner.profileImg || "/avatar-placeholder.png"} />
@@ -369,7 +369,7 @@ const Post = ({ post }) => {
 						<Link to={`/profile/${postOwner.username}`} className='font-bold'>
 							{postOwner.fullName}
 						</Link>
-						<span className='text-gray-700 flex gap-1 text-sm'>
+						<span className='text-slate-500 flex gap-1 text-sm'>
 							<Link to={`/profile/${postOwner.username}`}>@{postOwner.username}</Link>
 							<span>·</span>
 							<Link to={`/post/${post._id}`} className='hover:underline'>
@@ -380,11 +380,11 @@ const Post = ({ post }) => {
 						{(!isMyPost || isCommunityMod) && (
 							<div className='dropdown dropdown-end flex justify-end flex-1'>
 								<button tabIndex={0} aria-label='More options'>
-									<IoEllipsisHorizontal className='w-5 h-5 text-slate-500 hover:text-white' />
+									<IoEllipsisHorizontal className='w-5 h-5 text-slate-500 hover:text-base-content' />
 								</button>
 								<ul
 									tabIndex={0}
-									className='dropdown-content z-[1] menu p-2 shadow bg-base-100 rounded-box w-56 border border-gray-700 mt-6'
+									className='dropdown-content z-[1] menu p-2 shadow bg-base-100 rounded-box w-56 border border-line mt-6'
 								>
 									{isCommunityMod && (
 										<li>
@@ -537,13 +537,13 @@ const Post = ({ post }) => {
 							<a href={images[0]} target='_blank' rel='noreferrer'>
 								<img
 									src={images[0]}
-									className='max-h-96 w-full object-contain rounded-lg border border-gray-700'
+									className='max-h-96 w-full object-contain rounded-lg border border-line'
 									alt=''
 								/>
 							</a>
 						)}
 						{images.length > 1 && (
-							<div className='grid grid-cols-2 gap-1 rounded-lg overflow-hidden border border-gray-700'>
+							<div className='grid grid-cols-2 gap-1 rounded-lg overflow-hidden border border-line'>
 								{images.map((src, i) => (
 									<a
 										key={src + i}
@@ -577,7 +577,7 @@ const Post = ({ post }) => {
 							</div>
 							{/* We're using Modal Component from DaisyUI */}
 							<dialog id={`comments_modal${post._id}`} className='modal border-none outline-none'>
-								<div className='modal-box rounded border border-gray-600'>
+								<div className='modal-box rounded border border-line'>
 									<div className='flex items-center justify-between mb-4'>
 										<h3 className='font-bold text-lg'>COMMENTS</h3>
 										{post.comments.length > 1 && (
@@ -611,7 +611,7 @@ const Post = ({ post }) => {
 												<div className='flex flex-col flex-1'>
 													<div className='flex items-center gap-1 flex-wrap'>
 														<span className='font-bold'>{comment.user.fullName}</span>
-														<span className='text-gray-700 text-sm'>
+														<span className='text-slate-500 text-sm'>
 															@{comment.user.username}
 														</span>
 														{post.acceptedComment === comment._id && (
@@ -658,11 +658,11 @@ const Post = ({ post }) => {
 										))}
 									</div>
 									<form
-										className='flex gap-2 items-center mt-4 border-t border-gray-600 pt-2'
+										className='flex gap-2 items-center mt-4 border-t border-line pt-2'
 										onSubmit={handlePostComment}
 									>
 										<textarea
-											className='textarea w-full p-1 rounded text-md resize-none border focus:outline-none  border-gray-800'
+											className='textarea w-full p-1 rounded text-md resize-none border focus:outline-none  border-line'
 											placeholder='Add a comment...'
 											value={comment}
 											onChange={(e) => setComment(e.target.value)}
@@ -733,7 +733,7 @@ const Post = ({ post }) => {
 								</button>
 								<ul
 									tabIndex={0}
-									className='dropdown-content z-[1] menu p-2 shadow bg-base-100 rounded-box w-52 border border-gray-700'
+									className='dropdown-content z-[1] menu p-2 shadow bg-base-100 rounded-box w-52 border border-line'
 								>
 									<li>
 										<a onClick={handleShare}>Copy link</a>

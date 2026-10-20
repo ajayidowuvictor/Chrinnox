@@ -67,20 +67,20 @@ const Sidebar = () => {
 		) : null;
 
 	const tabClass = ({ isActive }) =>
-		`relative flex flex-col items-center justify-center flex-1 py-1 ${isActive ? "text-white" : "text-slate-500"}`;
+		`relative flex flex-col items-center justify-center flex-1 py-1 ${isActive ? "text-base-content" : "text-slate-500"}`;
 
 	return (
 		<>
 		<div className='hidden md:block md:flex-[2_2_0] max-w-52'>
-			<div className='sticky top-0 left-0 h-screen flex flex-col border-r border-gray-700 w-full'>
+			<div className='sticky top-0 left-0 h-screen flex flex-col border-r border-line w-full'>
 				<Link to='/' className='flex justify-center md:justify-start'>
-					<Logo className='px-2 w-12 h-12 rounded-full text-white hover:bg-stone-900' />
+					<Logo className='px-2 w-12 h-12 rounded-full text-base-content hover:bg-hoverbg' />
 				</Link>
 				<ul className='flex flex-col gap-3 mt-4'>
 					<li className='flex justify-center md:justify-start'>
 						<Link
 							to='/'
-							className='flex gap-3 items-center hover:bg-stone-900 transition-all rounded-full duration-300 py-2 pl-2 pr-4 max-w-fit cursor-pointer'
+							className='flex gap-3 items-center hover:bg-hoverbg transition-all rounded-full duration-300 py-2 pl-2 pr-4 max-w-fit cursor-pointer'
 						>
 							<MdHomeFilled className='w-8 h-8' />
 							<span className='text-lg hidden md:block'>Home</span>
@@ -89,7 +89,7 @@ const Sidebar = () => {
 					<li className='flex justify-center md:justify-start'>
 						<Link
 							to='/search'
-							className='flex gap-3 items-center hover:bg-stone-900 transition-all rounded-full duration-300 py-2 pl-2 pr-4 max-w-fit cursor-pointer'
+							className='flex gap-3 items-center hover:bg-hoverbg transition-all rounded-full duration-300 py-2 pl-2 pr-4 max-w-fit cursor-pointer'
 						>
 							<IoSearch className='w-6 h-6' />
 							<span className='text-lg hidden md:block'>Explore</span>
@@ -98,7 +98,7 @@ const Sidebar = () => {
 					<li className='flex justify-center md:justify-start'>
 						<Link
 							to='/search?tab=opportunities'
-							className='flex gap-3 items-center hover:bg-stone-900 transition-all rounded-full duration-300 py-2 pl-2 pr-4 max-w-fit cursor-pointer'
+							className='flex gap-3 items-center hover:bg-hoverbg transition-all rounded-full duration-300 py-2 pl-2 pr-4 max-w-fit cursor-pointer'
 						>
 							<IoBriefcase className='w-6 h-6' />
 							<span className='text-lg hidden md:block'>Opportunities</span>
@@ -107,7 +107,7 @@ const Sidebar = () => {
 					<li className='flex justify-center md:justify-start'>
 						<Link
 							to='/search?tab=communities'
-							className='flex gap-3 items-center hover:bg-stone-900 transition-all rounded-full duration-300 py-2 pl-2 pr-4 max-w-fit cursor-pointer'
+							className='flex gap-3 items-center hover:bg-hoverbg transition-all rounded-full duration-300 py-2 pl-2 pr-4 max-w-fit cursor-pointer'
 						>
 							<IoPeople className='w-6 h-6' />
 							<span className='text-lg hidden md:block'>Communities</span>
@@ -116,7 +116,7 @@ const Sidebar = () => {
 					<li className='flex justify-center md:justify-start'>
 						<Link
 							to='/notifications'
-							className='flex gap-3 items-center hover:bg-stone-900 transition-all rounded-full duration-300 py-2 pl-2 pr-4 max-w-fit cursor-pointer'
+							className='flex gap-3 items-center hover:bg-hoverbg transition-all rounded-full duration-300 py-2 pl-2 pr-4 max-w-fit cursor-pointer'
 						>
 							<span className='relative'>
 								<IoNotifications className='w-6 h-6' />
@@ -133,7 +133,7 @@ const Sidebar = () => {
 					<li className='flex justify-center md:justify-start'>
 						<Link
 							to='/messages'
-							className='flex gap-3 items-center hover:bg-stone-900 transition-all rounded-full duration-300 py-2 pl-2 pr-4 max-w-fit cursor-pointer'
+							className='flex gap-3 items-center hover:bg-hoverbg transition-all rounded-full duration-300 py-2 pl-2 pr-4 max-w-fit cursor-pointer'
 						>
 							<span className='relative'>
 								<IoMail className='w-6 h-6' />
@@ -150,7 +150,7 @@ const Sidebar = () => {
 					<li className='flex justify-center md:justify-start'>
 						<Link
 							to='/bookmarks'
-							className='flex gap-3 items-center hover:bg-stone-900 transition-all rounded-full duration-300 py-2 pl-2 pr-4 max-w-fit cursor-pointer'
+							className='flex gap-3 items-center hover:bg-hoverbg transition-all rounded-full duration-300 py-2 pl-2 pr-4 max-w-fit cursor-pointer'
 						>
 							<FaBookmark className='w-5 h-5' />
 							<span className='text-lg hidden md:block'>Saved</span>
@@ -161,7 +161,7 @@ const Sidebar = () => {
 						<li className='flex justify-center md:justify-start'>
 							<Link
 								to='/admin'
-								className='flex gap-3 items-center hover:bg-stone-900 transition-all rounded-full duration-300 py-2 pl-2 pr-4 max-w-fit cursor-pointer'
+								className='flex gap-3 items-center hover:bg-hoverbg transition-all rounded-full duration-300 py-2 pl-2 pr-4 max-w-fit cursor-pointer'
 							>
 								<IoShieldCheckmark className='w-6 h-6' />
 								<span className='text-lg hidden md:block'>Moderation</span>
@@ -172,7 +172,7 @@ const Sidebar = () => {
 					<li className='flex justify-center md:justify-start'>
 						<Link
 							to='/settings'
-							className='flex gap-3 items-center hover:bg-stone-900 transition-all rounded-full duration-300 py-2 pl-2 pr-4 max-w-fit cursor-pointer'
+							className='flex gap-3 items-center hover:bg-hoverbg transition-all rounded-full duration-300 py-2 pl-2 pr-4 max-w-fit cursor-pointer'
 						>
 							<IoSettingsSharp className='w-6 h-6' />
 							<span className='text-lg hidden md:block'>Settings</span>
@@ -182,7 +182,7 @@ const Sidebar = () => {
 					<li className='flex justify-center md:justify-start'>
 						<Link
 							to={`/profile/${authUser?.username}`}
-							className='flex gap-3 items-center hover:bg-stone-900 transition-all rounded-full duration-300 py-2 pl-2 pr-4 max-w-fit cursor-pointer'
+							className='flex gap-3 items-center hover:bg-hoverbg transition-all rounded-full duration-300 py-2 pl-2 pr-4 max-w-fit cursor-pointer'
 						>
 							<FaUser className='w-6 h-6' />
 							<span className='text-lg hidden md:block'>Profile</span>
@@ -192,7 +192,7 @@ const Sidebar = () => {
 				{authUser && (
 					<Link
 						to={`/profile/${authUser.username}`}
-						className='mt-auto mb-10 flex gap-2 items-start transition-all duration-300 hover:bg-[#181818] py-2 px-4 rounded-full'
+						className='mt-auto mb-10 flex gap-2 items-start transition-all duration-300 hover:bg-hoverbg py-2 px-4 rounded-full'
 					>
 						<div className='avatar hidden md:inline-flex'>
 							<div className='w-8 rounded-full'>
@@ -201,7 +201,7 @@ const Sidebar = () => {
 						</div>
 						<div className='flex justify-between flex-1'>
 							<div className='hidden md:block'>
-								<p className='text-white font-bold text-sm w-20 truncate'>{authUser?.fullName}</p>
+								<p className='text-base-content font-bold text-sm w-20 truncate'>{authUser?.fullName}</p>
 								<p className='text-slate-500 text-sm'>@{authUser?.username}</p>
 							</div>
 							<BiLogOut
@@ -220,7 +220,7 @@ const Sidebar = () => {
 		{/* phone navigation bar */}
 		{!inChat && (
 			<nav
-				className='md:hidden fixed bottom-0 inset-x-0 z-40 flex items-stretch border-t border-gray-700 bg-base-100 pb-[env(safe-area-inset-bottom)]'
+				className='md:hidden fixed bottom-0 inset-x-0 z-40 flex items-stretch border-t border-line bg-base-100 pb-[env(safe-area-inset-bottom)]'
 				aria-label='Main navigation'
 			>
 				<NavLink to='/' end className={tabClass} aria-label='Home'>

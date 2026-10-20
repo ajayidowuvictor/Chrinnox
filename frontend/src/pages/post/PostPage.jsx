@@ -26,8 +26,8 @@ const PostPage = () => {
 	});
 
 	return (
-		<div className='flex-[4_4_0] border-l border-r border-gray-700 min-h-screen'>
-			<div className='flex gap-4 items-center p-4 border-b border-gray-700'>
+		<div className='flex-[4_4_0] border-l border-r border-line min-h-screen'>
+			<div className='flex gap-4 items-center p-4 border-b border-line'>
 				<button onClick={() => navigate(-1)} aria-label='Go back'>
 					<FaArrowLeft className='w-4 h-4' />
 				</button>

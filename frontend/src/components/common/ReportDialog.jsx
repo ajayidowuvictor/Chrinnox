@@ -43,7 +43,7 @@ const ReportDialog = ({ target, onClose }) => {
 	return (
 		<div className='fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4' onClick={onClose}>
 			<div
-				className='bg-base-100 border border-gray-700 rounded-2xl w-full max-w-md p-5 flex flex-col gap-3'
+				className='bg-base-100 border border-line rounded-2xl w-full max-w-md p-5 flex flex-col gap-3'
 				onClick={(e) => e.stopPropagation()}
 			>
 				<p className='font-bold text-lg'>Report {target.type === "post" ? "this post" : "this account"}</p>

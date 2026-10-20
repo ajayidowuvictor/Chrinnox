@@ -4,13 +4,26 @@ import daisyUIThemes from "daisyui/src/theming/themes";
 export default {
 	content: ["./index.html", "./src/**/*.{js,ts,jsx,tsx}"],
 	theme: {
-		extend: {},
+		extend: {
+			// these follow the active theme (see index.css)
+			colors: {
+				line: "var(--c-line)",
+				hoverbg: "var(--c-hover)",
+				surface: "var(--c-surface)",
+			},
+		},
 	},
 	plugins: [daisyui],
 
 	daisyui: {
 		themes: [
-			"light",
+			{
+				"chrinnox-light": {
+					...daisyUIThemes["light"],
+					primary: "rgb(29, 155, 240)",
+					secondary: "rgb(239, 243, 244)",
+				},
+			},
 			{
 				black: {
 					...daisyUIThemes["black"],

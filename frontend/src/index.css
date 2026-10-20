@@ -1,3 +1,16 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* colours that change with the theme */
+:root,
+:root[data-theme="black"] {
+	--c-line: #374151;
+	--c-hover: #1c1917;
+	--c-surface: #16181c;
+}
+:root[data-theme="chrinnox-light"] {
+	--c-line: #e5e7eb;
+	--c-hover: #f3f4f6;
+	--c-surface: #f3f4f6;
+}

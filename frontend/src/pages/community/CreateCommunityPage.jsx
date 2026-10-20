@@ -34,8 +34,8 @@ const CreateCommunityPage = () => {
 	const set = (k) => (e) => setForm({ ...form, [k]: e.target.value });
 
 	return (
-		<div className='flex-[4_4_0] border-l border-r border-gray-700 min-h-screen'>
-			<div className='flex gap-4 items-center p-4 border-b border-gray-700'>
+		<div className='flex-[4_4_0] border-l border-r border-line min-h-screen'>
+			<div className='flex gap-4 items-center p-4 border-b border-line'>
 				<Link to='/search?tab=communities'>
 					<FaArrowLeft className='w-4 h-4' />
 				</Link>

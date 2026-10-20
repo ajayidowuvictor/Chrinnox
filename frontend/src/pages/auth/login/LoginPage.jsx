@@ -58,12 +58,12 @@ const LoginPage = () => {
 	return (
 		<div className='max-w-screen-xl mx-auto flex h-screen'>
 			<div className='flex-1 hidden lg:flex items-center  justify-center'>
-				<Logo className='lg:w-2/3 text-white' />
+				<Logo className='lg:w-2/3 text-base-content' />
 			</div>
 			<div className='flex-1 flex flex-col justify-center items-center'>
 				<form className='flex gap-4 flex-col' onSubmit={handleSubmit}>
-					<Logo className='w-24 lg:hidden text-white' />
-					<h1 className='text-4xl font-extrabold text-white'>{"Let's"} go.</h1>
+					<Logo className='w-24 lg:hidden text-base-content' />
+					<h1 className='text-4xl font-extrabold'>{"Let's"} go.</h1>
 					<label className='input input-bordered rounded flex items-center gap-2'>
 						<MdOutlineMail />
 						<input
@@ -96,7 +96,7 @@ const LoginPage = () => {
 					</Link>
 				</form>
 				<div className='flex flex-col gap-2 mt-4'>
-					<p className='text-white text-lg'>{"Don't"} have an account?</p>
+					<p className='text-lg'>{"Don't"} have an account?</p>
 					<Link to='/signup'>
 						<button className='btn rounded-full btn-primary text-white btn-outline w-full'>Sign up</button>
 					</Link>

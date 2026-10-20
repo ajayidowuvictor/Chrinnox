@@ -37,10 +37,10 @@ const HomePage = () => {
 
 	return (
 		<>
-			<div className='flex-[4_4_0] mr-auto border-r border-gray-700 min-h-screen min-w-0'>
+			<div className='flex-[4_4_0] mr-auto border-r border-line min-h-screen min-w-0'>
 				<VerifyEmailBanner />
 				{/* Feed modes: you choose how your feed works */}
-				<div className='flex w-full border-b border-gray-700 overflow-x-auto' role='tablist'>
+				<div className='flex w-full border-b border-line overflow-x-auto' role='tablist'>
 					{FEEDS.map((feed) => (
 						<button
 							key={feed.id}
@@ -57,7 +57,7 @@ const HomePage = () => {
 						</button>
 					))}
 				</div>
-				<p className='px-4 py-1 text-xs text-slate-500 border-b border-gray-700'>{current.hint}</p>
+				<p className='px-4 py-1 text-xs text-slate-500 border-b border-line'>{current.hint}</p>
 
 				{/*  CREATE POST INPUT */}
 				<CreatePost />
