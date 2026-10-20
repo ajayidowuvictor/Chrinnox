@@ -1,4 +1,4 @@
-import { FaRegComment } from "react-icons/fa";
+import { FaRegComment, FaRegLightbulb, FaLightbulb } from "react-icons/fa";
 import { BiRepost } from "react-icons/bi";
 import { FaRegHeart } from "react-icons/fa";
 import { FaRegBookmark, FaBookmark, FaShareNodes } from "react-icons/fa6";
@@ -10,11 +10,13 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "react-hot-toast";
 
 import LoadingSpinner from "./LoadingSpinner";
+import PostText from "./PostText";
 import { formatPostDate } from "../../utils/date";
 import useSafetyActions from "../../hooks/useSafetyActions";
 
 const Post = ({ post }) => {
 	const [comment, setComment] = useState("");
+	const [commentSort, setCommentSort] = useState("helpful");
 	const { data: authUser } = useQuery({ queryKey: ["authUser"] });
 	const queryClient = useQueryClient();
 	const navigate = useNavigate();
@@ -25,6 +27,29 @@ const Post = ({ post }) => {
 	const isSaved = (authUser.bookmarks || []).includes(post._id);
 
 	const isMyPost = authUser._id === post.user._id;
+	const isHelpful = (post.helpful || []).includes(authUser._id);
+
+	// replies: most helpful first (ties keep the original order), or newest, or oldest
+	const sortedComments = [...post.comments].sort((a, b) => {
+		if (commentSort === "newest") return post.comments.indexOf(b) - post.comments.indexOf(a);
+		if (commentSort === "oldest") return post.comments.indexOf(a) - post.comments.indexOf(b);
+		return (b.helpful?.length || 0) - (a.helpful?.length || 0) || post.comments.indexOf(a) - post.comments.indexOf(b);
+	});
+
+	// change this post everywhere it is on screen (feeds and the single-post page)
+	const updateCachedPost = (updater) => {
+		queryClient.setQueriesData({ queryKey: ["posts"] }, (old) => {
+			if (!old?.pages) return old;
+			return {
+				...old,
+				pages: old.pages.map((pg) => ({
+					...pg,
+					posts: pg.posts.map((p) => (p._id === post._id ? updater(p) : p)),
+				})),
+			};
+		});
+		queryClient.setQueryData(["post", post._id], (old) => (old ? updater(old) : old));
+	};
 	const images = post.imgs?.length ? post.imgs : post.img ? [post.img] : [];
 
 	const formattedDate = formatPostDate(post.createdAt);
@@ -71,15 +96,7 @@ const Post = ({ post }) => {
 			// queryClient.invalidateQueries({ queryKey: ["posts"] });
 
 			// instead, update the cache directly for that post
-			queryClient.setQueryData(["posts"], (oldData) => {
-				return oldData?.map((p) => {
-					if (p._id === post._id) {
-						return { ...p, likes: updatedLikes };
-					}
-					return p;
-				});
-			});
-			queryClient.invalidateQueries({ queryKey: ["post", post._id] });
+			updateCachedPost((p) => ({ ...p, likes: updatedLikes }));
 		},
 		onError: (error) => {
 			toast.error(error.message);
@@ -94,15 +111,38 @@ const Post = ({ post }) => {
 			return data;
 		},
 		onSuccess: (updatedReposts) => {
-			queryClient.setQueryData(["posts"], (oldData) =>
-				oldData?.map((p) => (p._id === post._id ? { ...p, reposts: updatedReposts } : p))
-			);
-			queryClient.invalidateQueries({ queryKey: ["post", post._id] });
+			updateCachedPost((p) => ({ ...p, reposts: updatedReposts }));
 			toast.success(updatedReposts.includes(authUser._id) ? "Reposted" : "Repost removed");
 		},
 		onError: (error) => {
 			toast.error(error.message);
 		},
+	});
+
+	const { mutate: markHelpful, isPending: isMarkingHelpful } = useMutation({
+		mutationFn: async () => {
+			const res = await fetch(`/api/posts/helpful/${post._id}`, { method: "POST" });
+			const data = await res.json();
+			if (!res.ok) throw new Error(data.error || "Something went wrong");
+			return data;
+		},
+		onSuccess: (updated) => updateCachedPost((p) => ({ ...p, helpful: updated })),
+		onError: (error) => toast.error(error.message),
+	});
+
+	const { mutate: markCommentHelpful } = useMutation({
+		mutationFn: async (commentId) => {
+			const res = await fetch(`/api/posts/comment/${post._id}/${commentId}/helpful`, { method: "POST" });
+			const data = await res.json();
+			if (!res.ok) throw new Error(data.error || "Something went wrong");
+			return { commentId, helpful: data };
+		},
+		onSuccess: ({ commentId, helpful }) =>
+			updateCachedPost((p) => ({
+				...p,
+				comments: p.comments.map((c) => (c._id === commentId ? { ...c, helpful } : c)),
+			})),
+		onError: (error) => toast.error(error.message),
 	});
 
 	const { mutate: savePost, isPending: isSaving } = useMutation({
@@ -118,7 +158,11 @@ const Post = ({ post }) => {
 			toast.success(nowSaved ? "Saved to your bookmarks" : "Removed from bookmarks");
 			// on the Saved page, an unsaved post should disappear
 			if (!nowSaved && window.location.pathname === "/bookmarks") {
-				queryClient.setQueryData(["posts"], (oldData) => oldData?.filter((p) => p._id !== post._id));
+				queryClient.setQueriesData({ queryKey: ["posts", "bookmarks"] }, (old) =>
+					old?.pages
+						? { ...old, pages: old.pages.map((pg) => ({ ...pg, posts: pg.posts.filter((p) => p._id !== post._id) })) }
+						: old
+				);
 			}
 		},
 		onError: (error) => {
@@ -276,7 +320,7 @@ const Post = ({ post }) => {
 						)}
 					</div>
 					<div className='flex flex-col gap-3 overflow-hidden'>
-						<span>{post.text}</span>
+						<PostText text={post.text} />
 						{images.length === 1 && (
 							<a href={images[0]} target='_blank' rel='noreferrer'>
 								<img
@@ -322,14 +366,28 @@ const Post = ({ post }) => {
 							{/* We're using Modal Component from DaisyUI */}
 							<dialog id={`comments_modal${post._id}`} className='modal border-none outline-none'>
 								<div className='modal-box rounded border border-gray-600'>
-									<h3 className='font-bold text-lg mb-4'>COMMENTS</h3>
+									<div className='flex items-center justify-between mb-4'>
+										<h3 className='font-bold text-lg'>COMMENTS</h3>
+										{post.comments.length > 1 && (
+											<select
+												className='select select-bordered select-xs'
+												value={commentSort}
+												onChange={(e) => setCommentSort(e.target.value)}
+												aria-label='Sort replies'
+											>
+												<option value='helpful'>Most helpful</option>
+												<option value='newest'>Newest</option>
+												<option value='oldest'>Oldest</option>
+											</select>
+										)}
+									</div>
 									<div className='flex flex-col gap-3 max-h-60 overflow-auto'>
 										{post.comments.length === 0 && (
 											<p className='text-sm text-slate-500'>
 												No comments yet 🤔 Be the first one 😉
 											</p>
 										)}
-										{post.comments.map((comment) => (
+										{sortedComments.map((comment) => (
 											<div key={comment._id} className='flex gap-2 items-start'>
 												<div className='avatar'>
 													<div className='w-8 rounded-full'>
@@ -338,14 +396,28 @@ const Post = ({ post }) => {
 														/>
 													</div>
 												</div>
-												<div className='flex flex-col'>
+												<div className='flex flex-col flex-1'>
 													<div className='flex items-center gap-1'>
 														<span className='font-bold'>{comment.user.fullName}</span>
 														<span className='text-gray-700 text-sm'>
 															@{comment.user.username}
 														</span>
 													</div>
-													<div className='text-sm'>{comment.text}</div>
+													<div className='text-sm'>
+														<PostText text={comment.text} />
+													</div>
+													<button
+														type='button'
+														className={`flex gap-1 items-center text-xs mt-1 w-fit ${
+															(comment.helpful || []).includes(authUser._id)
+																? "text-amber-400"
+																: "text-slate-500 hover:text-amber-400"
+														}`}
+														onClick={() => markCommentHelpful(comment._id)}
+													>
+														{(comment.helpful || []).includes(authUser._id) ? <FaLightbulb /> : <FaRegLightbulb />}
+														Helpful{(comment.helpful || []).length > 0 ? ` · ${comment.helpful.length}` : ""}
+													</button>
 												</div>
 											</div>
 										))}
@@ -385,6 +457,20 @@ const Post = ({ post }) => {
 									}`}
 								>
 									{(post.reposts || []).length}
+								</span>
+							</div>
+							<div
+								className='flex gap-1 items-center group cursor-pointer'
+								title='Mark as helpful'
+								onClick={() => !isMarkingHelpful && markHelpful()}
+							>
+								{isHelpful ? (
+									<FaLightbulb className='w-4 h-4 text-amber-400' />
+								) : (
+									<FaRegLightbulb className='w-4 h-4 text-slate-500 group-hover:text-amber-400' />
+								)}
+								<span className={`text-sm group-hover:text-amber-400 ${isHelpful ? "text-amber-400" : "text-slate-500"}`}>
+									{(post.helpful || []).length}
 								</span>
 							</div>
 							<div className='flex gap-1 items-center group cursor-pointer' onClick={handleLikePost}>

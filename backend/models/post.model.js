@@ -24,6 +24,17 @@ const postSchema = new mongoose.Schema(
 				ref: "User",
 			},
 		],
+		topics: [
+			{
+				type: String,
+			},
+		],
+		helpful: [
+			{
+				type: mongoose.Schema.Types.ObjectId,
+				ref: "User",
+			},
+		],
 		reposts: [
 			{
 				type: mongoose.Schema.Types.ObjectId,
@@ -41,6 +52,12 @@ const postSchema = new mongoose.Schema(
 					ref: "User",
 					required: true,
 				},
+				helpful: [
+					{
+						type: mongoose.Schema.Types.ObjectId,
+						ref: "User",
+					},
+				],
 			},
 		],
 	},

@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 
 import LoadingSpinner from "../../components/common/LoadingSpinner";
+import TrendingTopics from "../../components/common/TrendingTopics";
 
 import { IoSearch } from "react-icons/io5";
 
@@ -43,7 +44,12 @@ const SearchPage = () => {
 				</label>
 			</div>
 
-			{debounced.length === 0 && <p className='text-center p-6 text-slate-500'>Type a name or username to find people.</p>}
+			{debounced.length === 0 && (
+				<>
+					<p className='text-center p-6 text-slate-500'>Type a name or username to find people.</p>
+					<TrendingTopics className='p-4 border-t border-gray-700' />
+				</>
+			)}
 			{debounced.length > 0 && isFetching && (
 				<div className='flex justify-center p-6'>
 					<LoadingSpinner size='lg' />

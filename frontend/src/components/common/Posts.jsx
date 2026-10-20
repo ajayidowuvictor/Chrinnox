@@ -1,75 +1,117 @@
+import { useEffect, useRef } from "react";
+import { useInfiniteQuery } from "@tanstack/react-query";
+
 import Post from "./Post";
 import PostSkeleton from "../skeletons/PostSkeleton";
-import { useQuery } from "@tanstack/react-query";
-import { useEffect } from "react";
+import LoadingSpinner from "./LoadingSpinner";
 
-const Posts = ({ feedType, username, userId }) => {
-	const getPostEndpoint = () => {
-		switch (feedType) {
-			case "forYou":
-				return "/api/posts/all";
-			case "following":
-				return "/api/posts/following";
-			case "posts":
-				return `/api/posts/user/${username}`;
-			case "bookmarks":
-				return "/api/posts/bookmarks";
-			case "likes":
-				return `/api/posts/likes/${userId}`;
-			default:
-				return "/api/posts/all";
-		}
+// feeds that the server splits into pages
+const PAGED = ["forYou", "following", "latest", "discussions", "topics", "topic"];
+
+const EMPTY_TEXT = {
+	following: "Nothing here yet. Follow some people and their posts will show up here.",
+	discussions: "No active discussions yet. Reply to a post to start one.",
+	latest: "No posts yet. Be the first to post.",
+	forYou: "No posts yet. Be the first to post.",
+	topic: "No posts in this topic yet. Be the first.",
+	posts: "No posts here yet.",
+	likes: "No liked posts yet.",
+	bookmarks: "You haven't saved anything yet. Tap the bookmark on a post to keep it here.",
+};
+
+const Posts = ({ feedType, username, userId, topic }) => {
+	const getEndpoint = (page) => {
+		if (feedType === "topic") return `/api/posts/feed?mode=topic&topic=${encodeURIComponent(topic)}&page=${page}`;
+		if (PAGED.includes(feedType)) return `/api/posts/feed?mode=${feedType}&page=${page}`;
+		if (feedType === "posts") return `/api/posts/user/${username}`;
+		if (feedType === "likes") return `/api/posts/likes/${userId}`;
+		if (feedType === "bookmarks") return "/api/posts/bookmarks";
+		return `/api/posts/feed?mode=forYou&page=${page}`;
 	};
 
-	const POST_ENDPOINT = getPostEndpoint();
-
-	const {
-		data: posts,
-		isLoading,
-		refetch,
-		isRefetching,
-	} = useQuery({
-		queryKey: ["posts"],
-		queryFn: async () => {
-			try {
-				const res = await fetch(POST_ENDPOINT);
-				const data = await res.json();
-
-				if (!res.ok) {
-					throw new Error(data.error || "Something went wrong");
-				}
-
-				return data;
-			} catch (error) {
-				throw new Error(error);
-			}
+	const { data, isLoading, error, fetchNextPage, hasNextPage, isFetchingNextPage, refetch } = useInfiniteQuery({
+		queryKey: ["posts", feedType, username, userId, topic],
+		initialPageParam: 1,
+		queryFn: async ({ pageParam }) => {
+			const res = await fetch(getEndpoint(pageParam));
+			const json = await res.json();
+			if (!res.ok) throw new Error(json.error || "Something went wrong");
+			// older endpoints return a plain list: treat it as a single page
+			return Array.isArray(json) ? { posts: json, hasMore: false } : json;
 		},
+		getNextPageParam: (lastPage, allPages) => (lastPage.hasMore ? allPages.length + 1 : undefined),
 	});
 
+	// load the next page when the bottom of the list comes into view
+	const sentinelRef = useRef(null);
 	useEffect(() => {
-		refetch();
-	}, [feedType, refetch, username]);
+		const el = sentinelRef.current;
+		if (!el || !hasNextPage) return;
+		const observer = new IntersectionObserver(
+			(entries) => {
+				if (entries[0].isIntersecting && !isFetchingNextPage) fetchNextPage();
+			},
+			{ rootMargin: "400px" }
+		);
+		observer.observe(el);
+		return () => observer.disconnect();
+	}, [hasNextPage, isFetchingNextPage, fetchNextPage]);
+
+	// pages can overlap when new posts arrive, so remove repeats
+	const seen = new Set();
+	const posts = (data?.pages ?? [])
+		.flatMap((p) => p.posts)
+		.filter((p) => (seen.has(p._id) ? false : seen.add(p._id)));
+
+	if (isLoading) {
+		return (
+			<div className='flex flex-col justify-center'>
+				<PostSkeleton />
+				<PostSkeleton />
+				<PostSkeleton />
+			</div>
+		);
+	}
+
+	if (error) {
+		return (
+			<div className='text-center my-6'>
+				<p className='mb-3'>Couldn&apos;t load posts. {error.message}</p>
+				<button className='btn btn-outline btn-sm rounded-full' onClick={() => refetch()}>
+					Try again
+				</button>
+			</div>
+		);
+	}
+
+	if (feedType === "topics" && data?.pages?.[0]?.needsTopics) {
+		return (
+			<p className='text-center my-6 px-6'>
+				You aren&apos;t following any topics yet. Tap a <span className='text-sky-500'>#hashtag</span> in any post,
+				or look at trending topics in Search, then press <b>Follow</b>.
+			</p>
+		);
+	}
+
+	if (posts.length === 0) {
+		return <p className='text-center my-6 px-6 text-slate-400'>{EMPTY_TEXT[feedType] || "Nothing here yet."}</p>;
+	}
 
 	return (
-		<>
-			{(isLoading || isRefetching) && (
-				<div className='flex flex-col justify-center'>
-					<PostSkeleton />
-					<PostSkeleton />
-					<PostSkeleton />
-				</div>
-			)}
-			{!isLoading && !isRefetching && posts?.length === 0 && (
-				<p className='text-center my-4'>No posts in this tab. Switch 👻</p>
-			)}
-			{!isLoading && !isRefetching && posts && (
-				<div>
-					{posts.map((post) => (
-						<Post key={post._id} post={post} />
-					))}
-				</div>
-			)}
-		</>
+		<div>
+			{posts.map((post) => (
+				<Post key={post._id} post={post} />
+			))}
+			<div ref={sentinelRef} className='py-6 flex justify-center'>
+				{isFetchingNextPage && <LoadingSpinner size='md' />}
+				{hasNextPage && !isFetchingNextPage && (
+					<button className='btn btn-outline btn-sm rounded-full' onClick={() => fetchNextPage()}>
+						Load more
+					</button>
+				)}
+				{!hasNextPage && posts.length > 8 && <p className='text-sm text-slate-500'>You&apos;re all caught up</p>}
+			</div>
+		</div>
 	);
 };
 export default Posts;

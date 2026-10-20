@@ -10,6 +10,7 @@ import MessagesPage from "./pages/messages/MessagesPage";
 import PostPage from "./pages/post/PostPage";
 import SearchPage from "./pages/search/SearchPage";
 import SettingsPage from "./pages/settings/SettingsPage";
+import TopicPage from "./pages/topic/TopicPage";
 
 import Sidebar from "./components/common/Sidebar";
 import RightPanel from "./components/common/RightPanel";
@@ -58,6 +59,7 @@ function App() {
 				<Route path='/signup' element={!authUser ? <SignUpPage /> : <Navigate to='/' />} />
 				<Route path='/notifications' element={authUser ? <NotificationPage /> : <Navigate to='/login' />} />
 				<Route path='/post/:id' element={authUser ? <PostPage /> : <Navigate to='/login' />} />
+				<Route path='/topic/:name' element={authUser ? <TopicPage /> : <Navigate to='/login' />} />
 				<Route path='/settings' element={authUser ? <SettingsPage /> : <Navigate to='/login' />} />
 				<Route path='/search' element={authUser ? <SearchPage /> : <Navigate to='/login' />} />
 				<Route path='/bookmarks' element={authUser ? <BookmarksPage /> : <Navigate to='/login' />} />

@@ -3,6 +3,7 @@ import Post from "../models/post.model.js";
 import User from "../models/user.model.js";
 import { findUserByUsername } from "../lib/utils/findUser.js";
 import { isBlockedBetween, buildFeedFilter } from "../lib/utils/relations.js";
+import { extractTopics, normalizeTopic, isValidTopic } from "../lib/utils/topics.js";
 import { v2 as cloudinary } from "cloudinary";
 import mongoose from "mongoose";
 
@@ -53,6 +54,7 @@ export const createPost = async (req, res) => {
 			text,
 			imgs: urls,
 			img: urls[0], // kept so older screens still work
+			topics: extractTopics(text),
 		});
 
 		await newPost.save();
@@ -438,6 +440,176 @@ export const getPostById = async (req, res) => {
 		res.status(200).json(post);
 	} catch (error) {
 		console.log("Error in getPostById controller: ", error);
+		res.status(500).json({ error: "Internal server error" });
+	}
+};
+
+// ---------------- "Helpful" signal (separate from likes) ----------------
+
+export const helpfulUnhelpful = async (req, res) => {
+	try {
+		const userId = req.user._id;
+		const post = await Post.findById(req.params.id);
+		if (!post) return res.status(404).json({ error: "Post not found" });
+
+		const already = post.helpful.some((id) => id.toString() === userId.toString());
+		if (already) {
+			await Post.updateOne({ _id: post._id }, { $pull: { helpful: userId } });
+			return res.status(200).json(post.helpful.filter((id) => id.toString() !== userId.toString()));
+		}
+
+		post.helpful.push(userId);
+		await post.save();
+
+		if (post.user.toString() !== userId.toString()) {
+			await new Notification({ from: userId, to: post.user, type: "helpful" }).save();
+		}
+		res.status(200).json(post.helpful);
+	} catch (error) {
+		console.log("Error in helpfulUnhelpful controller: ", error);
+		res.status(500).json({ error: "Internal server error" });
+	}
+};
+
+export const helpfulUnhelpfulComment = async (req, res) => {
+	try {
+		const userId = req.user._id;
+		const { postId, commentId } = req.params;
+		if (!mongoose.isValidObjectId(postId) || !mongoose.isValidObjectId(commentId)) {
+			return res.status(404).json({ error: "Reply not found" });
+		}
+
+		const post = await Post.findById(postId);
+		const comment = post?.comments.id(commentId);
+		if (!comment) return res.status(404).json({ error: "Reply not found" });
+
+		const already = comment.helpful.some((id) => id.toString() === userId.toString());
+		if (already) {
+			comment.helpful = comment.helpful.filter((id) => id.toString() !== userId.toString());
+		} else {
+			comment.helpful.push(userId);
+		}
+		await post.save();
+
+		if (!already && comment.user.toString() !== userId.toString()) {
+			await new Notification({ from: userId, to: comment.user, type: "helpful" }).save();
+		}
+		res.status(200).json(comment.helpful);
+	} catch (error) {
+		console.log("Error in helpfulUnhelpfulComment controller: ", error);
+		res.status(500).json({ error: "Internal server error" });
+	}
+};
+
+// ---------------- Feed modes with pages ----------------
+
+const FEED_PAGE_SIZE = 15;
+const FEED_MODES = ["forYou", "following", "latest", "discussions", "topics", "topic"];
+
+const populateFeed = (query) =>
+	query
+		.populate({ path: "user", select: "-password" })
+		.populate({ path: "comments.user", select: "-password" });
+
+export const getFeed = async (req, res) => {
+	try {
+		const meId = req.user._id;
+		const mode = FEED_MODES.includes(req.query.mode) ? req.query.mode : "forYou";
+		const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+		const skip = (page - 1) * FEED_PAGE_SIZE;
+
+		const me = await User.findById(meId).select("following followedTopics");
+		const followingSet = new Set(me.following.map((id) => id.toString()));
+		const topicSet = new Set(me.followedTopics || []);
+		const filter = await buildFeedFilter(meId);
+
+		let posts = [];
+		let hasMore = false;
+
+		// modes that the database can sort and page by itself
+		const pagedFind = async (conditions, sort = { createdAt: -1 }) => {
+			const rows = await populateFeed(
+				Post.find({ $and: [conditions, filter] })
+					.sort(sort)
+					.skip(skip)
+					.limit(FEED_PAGE_SIZE + 1)
+			);
+			hasMore = rows.length > FEED_PAGE_SIZE;
+			return rows.slice(0, FEED_PAGE_SIZE);
+		};
+
+		// modes that need ranking: look at the newest posts, score them, then page
+		const rankedFind = async (conditions, scoreOf) => {
+			const candidates = await populateFeed(
+				Post.find({ $and: [conditions, filter] })
+					.sort({ createdAt: -1 })
+					.limit(300)
+			);
+			const ranked = candidates
+				.map((p) => ({ p, score: scoreOf(p) }))
+				.sort((a, b) => b.score - a.score || b.p.createdAt - a.p.createdAt)
+				.map((x) => x.p);
+			hasMore = ranked.length > skip + FEED_PAGE_SIZE;
+			return ranked.slice(skip, skip + FEED_PAGE_SIZE);
+		};
+
+		const hoursOld = (p) => (Date.now() - new Date(p.createdAt).getTime()) / 36e5;
+
+		if (mode === "latest") {
+			posts = await pagedFind({});
+		} else if (mode === "following") {
+			const following = me.following;
+			posts = await pagedFind({ $or: [{ user: { $in: following } }, { reposts: { $in: following } }] });
+		} else if (mode === "topics") {
+			if (topicSet.size === 0) {
+				return res.status(200).json({ posts: [], hasMore: false, needsTopics: true });
+			}
+			posts = await pagedFind({ topics: { $in: [...topicSet] } });
+		} else if (mode === "topic") {
+			const topic = normalizeTopic(req.query.topic);
+			if (!isValidTopic(topic)) return res.status(200).json({ posts: [], hasMore: false });
+			posts = await pagedFind({ topics: topic });
+		} else if (mode === "discussions") {
+			// conversations with the most replies, recent ones first
+			posts = await rankedFind({ "comments.0": { $exists: true } }, (p) => {
+				const replies = p.comments.length;
+				return (replies + p.helpful.length) / Math.pow(hoursOld(p) + 2, 0.8);
+			});
+		} else {
+			// For You: usefulness and conversation count more than raw likes, fresh posts win,
+			// and people and topics you follow get a boost
+			posts = await rankedFind({}, (p) => {
+				let score =
+					1 + p.likes.length + 2 * p.comments.length + 2 * p.reposts.length + 3 * p.helpful.length;
+				if (followingSet.has(p.user._id.toString())) score *= 2;
+				if ((p.topics || []).some((t) => topicSet.has(t))) score *= 1.5;
+				return score / Math.pow(hoursOld(p) + 2, 1.2);
+			});
+		}
+
+		// label posts that are here because someone you follow reposted them
+		const result = posts.map((p) => {
+			const obj = p.toObject();
+			if (mode === "following" && !followingSet.has(p.user._id.toString())) {
+				const reposterId = p.reposts.find((id) => followingSet.has(id.toString()));
+				if (reposterId) obj._reposterId = reposterId.toString();
+			}
+			return obj;
+		});
+		const reposterIds = [...new Set(result.map((o) => o._reposterId).filter(Boolean))];
+		if (reposterIds.length) {
+			const reposters = await User.find({ _id: { $in: reposterIds } }).select("username fullName");
+			const byId = new Map(reposters.map((u) => [u._id.toString(), u]));
+			result.forEach((o) => {
+				const u = byId.get(o._reposterId);
+				if (u) o.repostedBy = { fullName: u.fullName, username: u.username };
+				delete o._reposterId;
+			});
+		}
+
+		res.status(200).json({ posts: result, hasMore, page });
+	} catch (error) {
+		console.log("Error in getFeed controller: ", error);
 		res.status(500).json({ error: "Internal server error" });
 	}
 };

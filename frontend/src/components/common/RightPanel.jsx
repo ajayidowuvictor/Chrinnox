@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import useFollow from "../../hooks/useFollow";
 
 import RightPanelSkeleton from "../skeletons/RightPanelSkeleton";
+import TrendingTopics from "./TrendingTopics";
 import LoadingSpinner from "./LoadingSpinner";
 
 const RightPanel = () => {
@@ -25,11 +26,12 @@ const RightPanel = () => {
 
 	const { follow, isPending } = useFollow();
 
-	if (suggestedUsers?.length === 0) return <div className='md:w-64 w-0'></div>;
-
 	return (
-		<div className='hidden lg:block my-4 mx-2'>
-			<div className='bg-[#16181C] p-4 rounded-md sticky top-2'>
+		<div className='hidden lg:block my-4 mx-2 w-64'>
+			<div className='sticky top-2 flex flex-col gap-4'>
+			<TrendingTopics className='bg-[#16181C] p-4 rounded-md' />
+			{(isLoading || suggestedUsers?.length > 0) && (
+			<div className='bg-[#16181C] p-4 rounded-md'>
 				<p className='font-bold'>Who to follow</p>
 				<div className='flex flex-col gap-4'>
 					{/* item */}
@@ -75,6 +77,8 @@ const RightPanel = () => {
 							</Link>
 						))}
 				</div>
+			</div>
+			)}
 			</div>
 		</div>
 	);
