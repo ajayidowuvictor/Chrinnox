@@ -18,6 +18,7 @@ const EMPTY_TEXT = {
 	opportunities: "No open opportunities match. Try another filter, or post one yourself.",
 	posts: "No posts here yet.",
 	likes: "No liked posts yet.",
+	collection: "This collection is empty. Use the share button on a post, then \"Save to collection\".",
 	bookmarks: "You haven't saved anything yet. Tap the bookmark on a post to keep it here.",
 };
 
@@ -34,6 +35,7 @@ const Posts = ({ feedType, username, userId, topic, slug, kind, q }) => {
 		if (PAGED.includes(feedType)) return `/api/posts/feed?mode=${feedType}&page=${page}`;
 		if (feedType === "posts") return `/api/posts/user/${username}`;
 		if (feedType === "likes") return `/api/posts/likes/${userId}`;
+		if (feedType === "collection") return `/api/collections/${slug}/posts`;
 		if (feedType === "bookmarks") return "/api/posts/bookmarks";
 		return `/api/posts/feed?mode=forYou&page=${page}`;
 	};

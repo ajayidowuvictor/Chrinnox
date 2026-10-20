@@ -15,6 +15,7 @@ import { formatPostDate } from "../../utils/date";
 import { describeDeadline } from "../../utils/date/deadline";
 import useSafetyActions from "../../hooks/useSafetyActions";
 import ReportDialog from "./ReportDialog";
+import SaveToCollectionDialog from "./SaveToCollectionDialog";
 
 const Post = ({ post }) => {
 	const [comment, setComment] = useState("");
@@ -24,6 +25,7 @@ const Post = ({ post }) => {
 	const navigate = useNavigate();
 	const { toggleMute, toggleBlock } = useSafetyActions();
 	const [reportTarget, setReportTarget] = useState(null);
+	const [collectionOpen, setCollectionOpen] = useState(false);
 	const [editing, setEditing] = useState(false);
 	const [editText, setEditText] = useState("");
 	const postOwner = post.user;
@@ -235,6 +237,10 @@ const Post = ({ post }) => {
 			queryClient.setQueryData(["authUser"], (old) => (old ? { ...old, bookmarks: updatedBookmarks } : old));
 			const nowSaved = updatedBookmarks.includes(post._id);
 			toast.success(nowSaved ? "Saved to your bookmarks" : "Removed from bookmarks");
+			if (!nowSaved) {
+				queryClient.invalidateQueries({ queryKey: ["collections"] });
+				queryClient.invalidateQueries({ queryKey: ["posts", "collection"] });
+			}
 			// on the Saved page, an unsaved post should disappear
 			if (!nowSaved && window.location.pathname === "/bookmarks") {
 				queryClient.setQueriesData({ queryKey: ["posts", "bookmarks"] }, (old) =>
@@ -328,6 +334,7 @@ const Post = ({ post }) => {
 	return (
 		<>
 			<ReportDialog target={reportTarget} onClose={() => setReportTarget(null)} />
+			<SaveToCollectionDialog postId={collectionOpen ? post._id : null} onClose={() => setCollectionOpen(false)} />
 			<div className='flex gap-2 items-start p-4 border-b border-gray-700'>
 				<div className='avatar'>
 					<Link to={`/profile/${postOwner.username}`} className='w-8 rounded-full overflow-hidden'>
@@ -733,6 +740,16 @@ const Post = ({ post }) => {
 									</li>
 									<li>
 										<a onClick={handleSendInMessage}>Send in message</a>
+									</li>
+									<li>
+										<a
+											onClick={() => {
+												document.activeElement?.blur();
+												setCollectionOpen(true);
+											}}
+										>
+											Save to collection
+										</a>
 									</li>
 								</ul>
 							</div>

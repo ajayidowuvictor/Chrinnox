@@ -7,6 +7,7 @@ import { extractTopics, normalizeTopic, isValidTopic } from "../lib/utils/topics
 import { v2 as cloudinary } from "cloudinary";
 import mongoose from "mongoose";
 import Community from "../models/community.model.js";
+import Collection from "../models/collection.model.js";
 import { OPPORTUNITY_KINDS, POST_TYPES } from "../lib/constants.js";
 import { escapeRegex } from "../lib/utils/findUser.js";
 import {
@@ -144,6 +145,7 @@ export const deletePost = async (req, res) => {
 		}
 
 		await Post.findByIdAndDelete(req.params.id);
+		await Collection.updateMany({ posts: post._id }, { $pull: { posts: post._id } });
 		await Community.updateOne({ pinnedPost: post._id }, { $unset: { pinnedPost: 1 } });
 
 		res.status(200).json({ message: "Post deleted successfully" });
@@ -454,6 +456,8 @@ export const bookmarkUnbookmark = async (req, res) => {
 			alreadySaved ? { $pull: { bookmarks: postId } } : { $addToSet: { bookmarks: postId } },
 			{ new: true }
 		).select("bookmarks");
+
+		if (alreadySaved) await Collection.updateMany({ owner: userId }, { $pull: { posts: postId } });
 
 		res.status(200).json(updatedUser.bookmarks);
 	} catch (error) {
