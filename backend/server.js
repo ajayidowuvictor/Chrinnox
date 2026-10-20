@@ -92,6 +92,23 @@ app.use("/api/events", eventRoutes);
 app.use("/api/push", pushRoutes);
 app.use("/api/collections", collectionRoutes);
 
+// Lets the Android app open Chrinnox full-screen without a browser bar.
+// Set ANDROID_PACKAGE_ID and ANDROID_SHA256 (comma separated if several) on the host.
+app.get("/.well-known/assetlinks.json", (req, res) => {
+	const pkg = process.env.ANDROID_PACKAGE_ID;
+	const prints = String(process.env.ANDROID_SHA256 || "")
+		.split(",")
+		.map((s) => s.trim().toUpperCase())
+		.filter(Boolean);
+	if (!pkg || prints.length === 0) return res.status(404).json({ error: "Not set up" });
+	res.json([
+		{
+			relation: ["delegate_permission/common.handle_all_urls"],
+			target: { namespace: "android_app", package_name: pkg, sha256_cert_fingerprints: prints },
+		},
+	]);
+});
+
 if (process.env.NODE_ENV === "production") {
 	app.use(express.static(path.join(__dirname, "/frontend/dist")));
 
