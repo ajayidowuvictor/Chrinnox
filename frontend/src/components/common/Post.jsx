@@ -1,7 +1,7 @@
 import { FaRegComment } from "react-icons/fa";
 import { BiRepost } from "react-icons/bi";
 import { FaRegHeart } from "react-icons/fa";
-import { FaRegBookmark, FaBookmark } from "react-icons/fa6";
+import { FaRegBookmark, FaBookmark, FaShareNodes } from "react-icons/fa6";
 import { FaTrash } from "react-icons/fa";
 import { useState } from "react";
 import { Link } from "react-router-dom";
@@ -67,13 +67,14 @@ const Post = ({ post }) => {
 
 			// instead, update the cache directly for that post
 			queryClient.setQueryData(["posts"], (oldData) => {
-				return oldData.map((p) => {
+				return oldData?.map((p) => {
 					if (p._id === post._id) {
 						return { ...p, likes: updatedLikes };
 					}
 					return p;
 				});
 			});
+			queryClient.invalidateQueries({ queryKey: ["post", post._id] });
 		},
 		onError: (error) => {
 			toast.error(error.message);
@@ -91,6 +92,7 @@ const Post = ({ post }) => {
 			queryClient.setQueryData(["posts"], (oldData) =>
 				oldData?.map((p) => (p._id === post._id ? { ...p, reposts: updatedReposts } : p))
 			);
+			queryClient.invalidateQueries({ queryKey: ["post", post._id] });
 			toast.success(updatedReposts.includes(authUser._id) ? "Reposted" : "Repost removed");
 		},
 		onError: (error) => {
@@ -143,6 +145,7 @@ const Post = ({ post }) => {
 			toast.success("Comment posted successfully");
 			setComment("");
 			queryClient.invalidateQueries({ queryKey: ["posts"] });
+			queryClient.invalidateQueries({ queryKey: ["post", post._id] });
 		},
 		onError: (error) => {
 			toast.error(error.message);
@@ -157,6 +160,21 @@ const Post = ({ post }) => {
 		e.preventDefault();
 		if (isCommenting) return;
 		commentPost();
+	};
+
+	const handleShare = async () => {
+		const url = `${window.location.origin}/post/${post._id}`;
+		try {
+			await navigator.clipboard.writeText(url);
+			toast.success("Link copied. Paste it anywhere to share this post");
+		} catch {
+			try {
+				if (navigator.share) await navigator.share({ title: "Chrinnox", url });
+				else toast.error("Could not copy the link");
+			} catch (err) {
+				if (err?.name !== "AbortError") toast.error("Could not share this post");
+			}
+		}
 	};
 
 	const handleRepost = () => {
@@ -199,7 +217,9 @@ const Post = ({ post }) => {
 						<span className='text-gray-700 flex gap-1 text-sm'>
 							<Link to={`/profile/${postOwner.username}`}>@{postOwner.username}</Link>
 							<span>·</span>
-							<span>{formattedDate}</span>
+							<Link to={`/post/${post._id}`} className='hover:underline'>
+								{formattedDate}
+							</Link>
 						</span>
 						{isMyPost && (
 							<span className='flex justify-end flex-1'>
@@ -318,7 +338,10 @@ const Post = ({ post }) => {
 								</span>
 							</div>
 						</div>
-						<div className='flex w-1/3 justify-end gap-2 items-center'>
+						<div className='flex w-1/3 justify-end gap-3 items-center'>
+							<button onClick={handleShare} aria-label='Copy link to post'>
+								<FaShareNodes className='w-4 h-4 text-slate-500 hover:text-sky-500 cursor-pointer' />
+							</button>
 							<button onClick={handleSave} aria-label={isSaved ? "Remove bookmark" : "Save post"}>
 								{isSaved ? (
 									<FaBookmark className='w-4 h-4 text-sky-500 cursor-pointer' />

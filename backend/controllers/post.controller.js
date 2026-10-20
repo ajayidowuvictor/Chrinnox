@@ -3,10 +3,15 @@ import Post from "../models/post.model.js";
 import User from "../models/user.model.js";
 import { findUserByUsername } from "../lib/utils/findUser.js";
 import { v2 as cloudinary } from "cloudinary";
+import mongoose from "mongoose";
+
+const MAX_POST_LENGTH = 500;
+const MAX_COMMENT_LENGTH = 300;
+const FEED_LIMIT = 100; // newest posts shown per feed
 
 export const createPost = async (req, res) => {
 	try {
-		const { text } = req.body;
+		const text = typeof req.body.text === "string" ? req.body.text.trim() : "";
 		let { img } = req.body;
 		const userId = req.user._id.toString();
 
@@ -16,10 +21,21 @@ export const createPost = async (req, res) => {
 		if (!text && !img) {
 			return res.status(400).json({ error: "Post must have text or image" });
 		}
+		if (text.length > MAX_POST_LENGTH) {
+			return res.status(400).json({ error: `Posts can be at most ${MAX_POST_LENGTH} characters` });
+		}
 
 		if (img) {
-			const uploadedResponse = await cloudinary.uploader.upload(img);
-			img = uploadedResponse.secure_url;
+			if (typeof img !== "string" || !img.startsWith("data:image/")) {
+				return res.status(400).json({ error: "Only image files can be attached" });
+			}
+			try {
+				const uploadedResponse = await cloudinary.uploader.upload(img);
+				img = uploadedResponse.secure_url;
+			} catch (uploadError) {
+				console.log("Cloudinary upload failed: ", uploadError.message);
+				return res.status(400).json({ error: "Image upload failed. Try a smaller image." });
+			}
 		}
 
 		const newPost = new Post({
@@ -67,8 +83,11 @@ export const commentOnPost = async (req, res) => {
 		const postId = req.params.id;
 		const userId = req.user._id;
 
-		if (!text || !text.trim()) {
+		if (typeof text !== "string" || !text.trim()) {
 			return res.status(400).json({ error: "Text field is required" });
+		}
+		if (text.trim().length > MAX_COMMENT_LENGTH) {
+			return res.status(400).json({ error: `Comments can be at most ${MAX_COMMENT_LENGTH} characters` });
 		}
 		const post = await Post.findById(postId);
 
@@ -76,7 +95,7 @@ export const commentOnPost = async (req, res) => {
 			return res.status(404).json({ error: "Post not found" });
 		}
 
-		const comment = { user: userId, text };
+		const comment = { user: userId, text: text.trim() };
 
 		post.comments.push(comment);
 		await post.save();
@@ -144,6 +163,7 @@ export const getAllPosts = async (req, res) => {
 	try {
 		const posts = await Post.find()
 			.sort({ createdAt: -1 })
+			.limit(FEED_LIMIT)
 			.populate({
 				path: "user",
 				select: "-password",
@@ -198,6 +218,7 @@ export const getFollowingPosts = async (req, res) => {
 
 		const feedPosts = await Post.find({ $or: [{ user: { $in: following } }, { reposts: { $in: following } }] })
 			.sort({ createdAt: -1 })
+			.limit(FEED_LIMIT)
 			.populate({
 				path: "user",
 				select: "-password",
@@ -244,6 +265,7 @@ export const getUserPosts = async (req, res) => {
 
 		const posts = await Post.find({ $or: [{ user: user._id }, { reposts: user._id }] })
 			.sort({ createdAt: -1 })
+			.limit(FEED_LIMIT)
 			.populate({
 				path: "user",
 				select: "-password",
@@ -354,6 +376,34 @@ export const getBookmarkedPosts = async (req, res) => {
 		res.status(200).json(posts);
 	} catch (error) {
 		console.log("Error in getBookmarkedPosts controller: ", error);
+		res.status(500).json({ error: "Internal server error" });
+	}
+};
+
+export const getPostById = async (req, res) => {
+	try {
+		const { id } = req.params;
+		if (!mongoose.isValidObjectId(id)) {
+			return res.status(404).json({ error: "Post not found" });
+		}
+
+		const post = await Post.findById(id)
+			.populate({
+				path: "user",
+				select: "-password",
+			})
+			.populate({
+				path: "comments.user",
+				select: "-password",
+			});
+
+		if (!post) {
+			return res.status(404).json({ error: "Post not found" });
+		}
+
+		res.status(200).json(post);
+	} catch (error) {
+		console.log("Error in getPostById controller: ", error);
 		res.status(500).json({ error: "Internal server error" });
 	}
 };

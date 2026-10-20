@@ -1,6 +1,6 @@
 import User from "../../models/user.model.js";
 
-const escapeRegex = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+export const escapeRegex = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 // Finds a user by username, ignoring capital letters and stray spaces
 // (so "Captain", "captain" and "Captain " all find the same person).

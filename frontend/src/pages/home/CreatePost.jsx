@@ -5,8 +5,15 @@ import { IoCloseSharp } from "react-icons/io5";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "react-hot-toast";
 
+const MAX_LENGTH = 500;
+const EMOJIS = [
+	"😀", "😂", "🤣", "😊", "😍", "😘", "😎", "🤔", "😢", "😭", "😡", "🙏",
+	"👍", "👎", "👏", "🙌", "💪", "🔥", "❤️", "💯", "🎉", "✨", "🇳🇬", "🚀",
+];
+
 const CreatePost = () => {
 	const [text, setText] = useState("");
+	const [showEmoji, setShowEmoji] = useState(false);
 	const [img, setImg] = useState(null);
 	const imgRef = useRef(null);
 
@@ -40,6 +47,7 @@ const CreatePost = () => {
 
 		onSuccess: () => {
 			setText("");
+			setShowEmoji(false);
 			setImg(null);
 			toast.success("Post created successfully");
 			queryClient.invalidateQueries({ queryKey: ["posts"] });
@@ -48,6 +56,8 @@ const CreatePost = () => {
 
 	const handleSubmit = (e) => {
 		e.preventDefault();
+		if (isPending) return;
+		if (!text.trim() && !img) return;
 		createPost({ text, img });
 	};
 
@@ -74,6 +84,7 @@ const CreatePost = () => {
 					className='textarea w-full p-0 text-lg resize-none border-none focus:outline-none  border-gray-800'
 					placeholder='What is happening?!'
 					value={text}
+					maxLength={MAX_LENGTH}
 					onChange={(e) => setText(e.target.value)}
 				/>
 				{img && (
@@ -95,13 +106,40 @@ const CreatePost = () => {
 							className='fill-primary w-6 h-6 cursor-pointer'
 							onClick={() => imgRef.current.click()}
 						/>
-						<BsEmojiSmileFill className='fill-primary w-5 h-5 cursor-pointer' />
+						<BsEmojiSmileFill
+							className='fill-primary w-5 h-5 cursor-pointer'
+							onClick={() => setShowEmoji((v) => !v)}
+						/>
 					</div>
 					<input type='file' accept='image/*' hidden ref={imgRef} onChange={handleImgChange} />
-					<button className='btn btn-primary rounded-full btn-sm text-white px-4'>
-						{isPending ? "Posting..." : "Post"}
-					</button>
+					<div className='flex items-center gap-3'>
+						{text.length > 0 && (
+							<span className={`text-xs ${text.length > MAX_LENGTH - 50 ? "text-red-500" : "text-slate-500"}`}>
+								{text.length}/{MAX_LENGTH}
+							</span>
+						)}
+						<button
+							className='btn btn-primary rounded-full btn-sm text-white px-4'
+							disabled={isPending || (!text.trim() && !img)}
+						>
+							{isPending ? "Posting..." : "Post"}
+						</button>
+					</div>
 				</div>
+				{showEmoji && (
+					<div className='flex flex-wrap gap-1 p-2 rounded-lg border border-gray-700 bg-[#16181C]'>
+						{EMOJIS.map((emoji) => (
+							<button
+								key={emoji}
+								type='button'
+								className='text-2xl w-10 h-10 rounded hover:bg-stone-800'
+								onClick={() => setText((t) => (t + emoji).slice(0, MAX_LENGTH))}
+							>
+								{emoji}
+							</button>
+						))}
+					</div>
+				)}
 				{isError && <div className='text-red-500'>{error.message}</div>}
 			</form>
 		</div>

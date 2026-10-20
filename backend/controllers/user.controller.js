@@ -4,7 +4,7 @@ import { v2 as cloudinary } from "cloudinary";
 // models
 import Notification from "../models/notification.model.js";
 import User from "../models/user.model.js";
-import { findUserByUsername } from "../lib/utils/findUser.js";
+import { findUserByUsername, escapeRegex } from "../lib/utils/findUser.js";
 
 export const getUserProfile = async (req, res) => {
 	const { username } = req.params;
@@ -89,6 +89,26 @@ export const getSuggestedUsers = async (req, res) => {
 	}
 };
 
+export const searchUsers = async (req, res) => {
+	try {
+		const q = String(req.query.q ?? "").trim().slice(0, 40);
+		if (q.length < 1) return res.status(200).json([]);
+
+		const regex = new RegExp(escapeRegex(q), "i");
+		const users = await User.find({
+			_id: { $ne: req.user._id },
+			$or: [{ username: regex }, { fullName: regex }],
+		})
+			.select("username fullName profileImg bio")
+			.limit(20);
+
+		res.status(200).json(users);
+	} catch (error) {
+		console.log("Error in searchUsers: ", error.message);
+		res.status(500).json({ error: "Internal Server Error" });
+	}
+};
+
 export const updateUser = async (req, res) => {
 	const { fullName, email, username, currentPassword, newPassword, bio, link } = req.body;
 	let { profileImg, coverImg } = req.body;
@@ -98,6 +118,37 @@ export const updateUser = async (req, res) => {
 	try {
 		let user = await User.findById(userId);
 		if (!user) return res.status(404).json({ message: "User not found" });
+
+		if (username && username.trim() !== user.username) {
+			const cleanUsername = username.trim();
+			if (!/^[A-Za-z0-9_]{3,20}$/.test(cleanUsername)) {
+				return res
+					.status(400)
+					.json({ error: "Username must be 3-20 characters: letters, numbers or underscore, no spaces" });
+			}
+			const taken = await findUserByUsername(cleanUsername);
+			if (taken && taken._id.toString() !== user._id.toString()) {
+				return res.status(400).json({ error: "Username is already taken" });
+			}
+		}
+
+		if (email && email.trim().toLowerCase() !== user.email) {
+			const cleanEmail = email.trim().toLowerCase();
+			if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
+				return res.status(400).json({ error: "Invalid email format" });
+			}
+			const emailTaken = await User.findOne({ email: cleanEmail });
+			if (emailTaken && emailTaken._id.toString() !== user._id.toString()) {
+				return res.status(400).json({ error: "Email is already taken" });
+			}
+		}
+
+		if (typeof bio === "string" && bio.length > 160) {
+			return res.status(400).json({ error: "Bio can be at most 160 characters" });
+		}
+		if (typeof link === "string" && link.length > 100) {
+			return res.status(400).json({ error: "Link can be at most 100 characters" });
+		}
 
 		if ((!newPassword && currentPassword) || (!currentPassword && newPassword)) {
 			return res.status(400).json({ error: "Please provide both current password and new password" });
@@ -133,11 +184,12 @@ export const updateUser = async (req, res) => {
 			coverImg = uploadedResponse.secure_url;
 		}
 
-		user.fullName = fullName || user.fullName;
-		user.email = email || user.email;
-		user.username = username || user.username;
-		user.bio = bio || user.bio;
-		user.link = link || user.link;
+		user.fullName = (fullName && fullName.trim()) || user.fullName;
+		user.email = (email && email.trim().toLowerCase()) || user.email;
+		user.username = (username && username.trim()) || user.username;
+		// an empty string clears the field; leaving it out keeps the old value
+		user.bio = typeof bio === "string" ? bio : user.bio;
+		user.link = typeof link === "string" ? link : user.link;
 		user.profileImg = profileImg || user.profileImg;
 		user.coverImg = coverImg || user.coverImg;
 
