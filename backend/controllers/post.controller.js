@@ -7,41 +7,51 @@ import mongoose from "mongoose";
 
 const MAX_POST_LENGTH = 500;
 const MAX_COMMENT_LENGTH = 300;
+const MAX_IMAGES = 4;
 const FEED_LIMIT = 100; // newest posts shown per feed
 
 export const createPost = async (req, res) => {
 	try {
 		const text = typeof req.body.text === "string" ? req.body.text.trim() : "";
-		let { img } = req.body;
 		const userId = req.user._id.toString();
+
+		// accept a list of images ("imgs") or a single one ("img")
+		let images = Array.isArray(req.body.imgs) ? req.body.imgs : req.body.img ? [req.body.img] : [];
+		images = images.filter(Boolean);
 
 		const user = await User.findById(userId);
 		if (!user) return res.status(404).json({ message: "User not found" });
 
-		if (!text && !img) {
+		if (!text && images.length === 0) {
 			return res.status(400).json({ error: "Post must have text or image" });
+		}
+		if (images.length > MAX_IMAGES) {
+			return res.status(400).json({ error: `You can attach at most ${MAX_IMAGES} photos` });
 		}
 		if (text.length > MAX_POST_LENGTH) {
 			return res.status(400).json({ error: `Posts can be at most ${MAX_POST_LENGTH} characters` });
 		}
 
-		if (img) {
-			if (typeof img !== "string" || !img.startsWith("data:image/")) {
-				return res.status(400).json({ error: "Only image files can be attached" });
-			}
+		if (images.some((i) => typeof i !== "string" || !i.startsWith("data:image/"))) {
+			return res.status(400).json({ error: "Only image files can be attached" });
+		}
+
+		let urls = [];
+		if (images.length > 0) {
 			try {
-				const uploadedResponse = await cloudinary.uploader.upload(img);
-				img = uploadedResponse.secure_url;
+				const uploads = await Promise.all(images.map((i) => cloudinary.uploader.upload(i)));
+				urls = uploads.map((u) => u.secure_url);
 			} catch (uploadError) {
 				console.log("Cloudinary upload failed: ", uploadError.message);
-				return res.status(400).json({ error: "Image upload failed. Try a smaller image." });
+				return res.status(400).json({ error: "Image upload failed. Try smaller images." });
 			}
 		}
 
 		const newPost = new Post({
 			user: userId,
 			text,
-			img,
+			imgs: urls,
+			img: urls[0], // kept so older screens still work
 		});
 
 		await newPost.save();
@@ -63,9 +73,14 @@ export const deletePost = async (req, res) => {
 			return res.status(401).json({ error: "You are not authorized to delete this post" });
 		}
 
-		if (post.img) {
-			const imgId = post.img.split("/").pop().split(".")[0];
-			await cloudinary.uploader.destroy(imgId);
+		const allImages = [...new Set([...(post.imgs || []), ...(post.img ? [post.img] : [])])];
+		for (const url of allImages) {
+			try {
+				const imgId = url.split("/").pop().split(".")[0];
+				await cloudinary.uploader.destroy(imgId);
+			} catch (destroyError) {
+				console.log("Could not delete image from Cloudinary: ", destroyError.message);
+			}
 		}
 
 		await Post.findByIdAndDelete(req.params.id);

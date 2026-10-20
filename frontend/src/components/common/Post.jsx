@@ -21,6 +21,7 @@ const Post = ({ post }) => {
 	const isSaved = (authUser.bookmarks || []).includes(post._id);
 
 	const isMyPost = authUser._id === post.user._id;
+	const images = post.imgs?.length ? post.imgs : post.img ? [post.img] : [];
 
 	const formattedDate = formatPostDate(post.createdAt);
 
@@ -233,12 +234,35 @@ const Post = ({ post }) => {
 					</div>
 					<div className='flex flex-col gap-3 overflow-hidden'>
 						<span>{post.text}</span>
-						{post.img && (
-							<img
-								src={post.img}
-								className='h-80 object-contain rounded-lg border border-gray-700'
-								alt=''
-							/>
+						{images.length === 1 && (
+							<a href={images[0]} target='_blank' rel='noreferrer'>
+								<img
+									src={images[0]}
+									className='max-h-96 w-full object-contain rounded-lg border border-gray-700'
+									alt=''
+								/>
+							</a>
+						)}
+						{images.length > 1 && (
+							<div className='grid grid-cols-2 gap-1 rounded-lg overflow-hidden border border-gray-700'>
+								{images.map((src, i) => (
+									<a
+										key={src + i}
+										href={src}
+										target='_blank'
+										rel='noreferrer'
+										className={images.length === 3 && i === 0 ? "row-span-2" : ""}
+									>
+										<img
+											src={src}
+											className={`w-full object-cover ${
+												images.length === 3 && i === 0 ? "h-full min-h-64" : "h-32 sm:h-40"
+											}`}
+											alt=''
+										/>
+									</a>
+								))}
+							</div>
 						)}
 					</div>
 					<div className='flex justify-between mt-3'>

@@ -4,8 +4,10 @@ import { useRef, useState } from "react";
 import { IoCloseSharp } from "react-icons/io5";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "react-hot-toast";
+import { compressImage } from "../../utils/image";
 
 const MAX_LENGTH = 500;
+const MAX_IMAGES = 4;
 const EMOJIS = [
 	"😀", "😂", "🤣", "😊", "😍", "😘", "😎", "🤔", "😢", "😭", "😡", "🙏",
 	"👍", "👎", "👏", "🙌", "💪", "🔥", "❤️", "💯", "🎉", "✨", "🇳🇬", "🚀",
@@ -14,7 +16,8 @@ const EMOJIS = [
 const CreatePost = () => {
 	const [text, setText] = useState("");
 	const [showEmoji, setShowEmoji] = useState(false);
-	const [img, setImg] = useState(null);
+	const [imgs, setImgs] = useState([]);
+	const [isProcessing, setIsProcessing] = useState(false);
 	const imgRef = useRef(null);
 
 	const { data: authUser } = useQuery({ queryKey: ["authUser"] });
@@ -26,14 +29,14 @@ const CreatePost = () => {
 		isError,
 		error,
 	} = useMutation({
-		mutationFn: async ({ text, img }) => {
+		mutationFn: async ({ text, imgs }) => {
 			try {
 				const res = await fetch("/api/posts/create", {
 					method: "POST",
 					headers: {
 						"Content-Type": "application/json",
 					},
-					body: JSON.stringify({ text, img }),
+					body: JSON.stringify({ text, imgs }),
 				});
 				const data = await res.json();
 				if (!res.ok) {
@@ -48,7 +51,7 @@ const CreatePost = () => {
 		onSuccess: () => {
 			setText("");
 			setShowEmoji(false);
-			setImg(null);
+			setImgs([]);
 			toast.success("Post created successfully");
 			queryClient.invalidateQueries({ queryKey: ["posts"] });
 		},
@@ -57,18 +60,34 @@ const CreatePost = () => {
 	const handleSubmit = (e) => {
 		e.preventDefault();
 		if (isPending) return;
-		if (!text.trim() && !img) return;
-		createPost({ text, img });
+		if (isProcessing) return;
+		if (!text.trim() && imgs.length === 0) return;
+		createPost({ text, imgs });
 	};
 
-	const handleImgChange = (e) => {
-		const file = e.target.files[0];
-		if (file) {
-			const reader = new FileReader();
-			reader.onload = () => {
-				setImg(reader.result);
-			};
-			reader.readAsDataURL(file);
+	const handleImgChange = async (e) => {
+		const files = Array.from(e.target.files || []);
+		e.target.value = null; // lets you pick the same photo again later
+		if (files.length === 0) return;
+
+		const room = MAX_IMAGES - imgs.length;
+		if (files.length > room) {
+			toast.error(`You can attach at most ${MAX_IMAGES} photos`);
+		}
+
+		setIsProcessing(true);
+		try {
+			const added = await Promise.all(
+				files
+					.filter((f) => f.type.startsWith("image/"))
+					.slice(0, room)
+					.map((f) => compressImage(f))
+			);
+			setImgs((current) => [...current, ...added].slice(0, MAX_IMAGES));
+		} catch (error) {
+			toast.error(error.message);
+		} finally {
+			setIsProcessing(false);
 		}
 	};
 
@@ -87,31 +106,33 @@ const CreatePost = () => {
 					maxLength={MAX_LENGTH}
 					onChange={(e) => setText(e.target.value)}
 				/>
-				{img && (
-					<div className='relative w-72 mx-auto'>
-						<IoCloseSharp
-							className='absolute top-0 right-0 text-white bg-gray-800 rounded-full w-5 h-5 cursor-pointer'
-							onClick={() => {
-								setImg(null);
-								imgRef.current.value = null;
-							}}
-						/>
-						<img src={img} className='w-full mx-auto h-72 object-contain rounded' />
+				{imgs.length > 0 && (
+					<div className='grid grid-cols-2 gap-2'>
+						{imgs.map((src, i) => (
+							<div key={i} className='relative'>
+								<IoCloseSharp
+									className='absolute top-1 right-1 text-white bg-gray-800 rounded-full w-5 h-5 cursor-pointer'
+									onClick={() => setImgs((current) => current.filter((_, idx) => idx !== i))}
+								/>
+								<img src={src} className='w-full h-36 object-cover rounded' />
+							</div>
+						))}
 					</div>
 				)}
+				{isProcessing && <p className='text-sm text-slate-500'>Preparing photos...</p>}
 
 				<div className='flex justify-between border-t py-2 border-t-gray-700'>
 					<div className='flex gap-1 items-center'>
 						<CiImageOn
-							className='fill-primary w-6 h-6 cursor-pointer'
-							onClick={() => imgRef.current.click()}
+							className={`w-6 h-6 ${imgs.length >= MAX_IMAGES ? "fill-gray-600" : "fill-primary cursor-pointer"}`}
+							onClick={() => imgs.length < MAX_IMAGES && imgRef.current.click()}
 						/>
 						<BsEmojiSmileFill
 							className='fill-primary w-5 h-5 cursor-pointer'
 							onClick={() => setShowEmoji((v) => !v)}
 						/>
 					</div>
-					<input type='file' accept='image/*' hidden ref={imgRef} onChange={handleImgChange} />
+					<input type='file' accept='image/*' multiple hidden ref={imgRef} onChange={handleImgChange} />
 					<div className='flex items-center gap-3'>
 						{text.length > 0 && (
 							<span className={`text-xs ${text.length > MAX_LENGTH - 50 ? "text-red-500" : "text-slate-500"}`}>
@@ -120,7 +141,7 @@ const CreatePost = () => {
 						)}
 						<button
 							className='btn btn-primary rounded-full btn-sm text-white px-4'
-							disabled={isPending || (!text.trim() && !img)}
+							disabled={isPending || isProcessing || (!text.trim() && imgs.length === 0)}
 						>
 							{isPending ? "Posting..." : "Post"}
 						</button>
