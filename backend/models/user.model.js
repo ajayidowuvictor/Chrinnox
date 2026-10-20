@@ -68,6 +68,16 @@ const userSchema = new mongoose.Schema(
 			whoCanMessage: { type: String, enum: ["everyone", "following", "nobody"], default: "everyone" },
 			whoCanReply: { type: String, enum: ["everyone", "following", "nobody"], default: "everyone" },
 		},
+		// which alerts this person wants (both in the app and on their phone)
+		notifPrefs: {
+			follow: { type: Boolean, default: true },
+			like: { type: Boolean, default: true },
+			comment: { type: Boolean, default: true },
+			repost: { type: Boolean, default: true },
+			helpful: { type: Boolean, default: true },
+			accepted: { type: Boolean, default: true },
+			message: { type: Boolean, default: true },
+		},
 		bookmarks: [
 			{
 				type: mongoose.Schema.Types.ObjectId,

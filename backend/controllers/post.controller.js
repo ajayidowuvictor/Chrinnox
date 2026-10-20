@@ -1,4 +1,4 @@
-import Notification from "../models/notification.model.js";
+import { notify } from "../lib/utils/notify.js";
 import Post from "../models/post.model.js";
 import User from "../models/user.model.js";
 import { findUserByUsername } from "../lib/utils/findUser.js";
@@ -195,12 +195,7 @@ export const commentOnPost = async (req, res) => {
 
 		// notify the post owner (not when commenting on your own post)
 		if (post.user.toString() !== userId.toString()) {
-			const notification = new Notification({
-				from: userId,
-				to: post.user,
-				type: "comment",
-			});
-			await notification.save();
+			await notify({ from: userId, to: post.user, type: "comment" });
 		}
 
 		res.status(200).json(post);
@@ -236,12 +231,7 @@ export const likeUnlikePost = async (req, res) => {
 			await User.updateOne({ _id: userId }, { $push: { likedPosts: postId } });
 			await post.save();
 
-			const notification = new Notification({
-				from: userId,
-				to: post.user,
-				type: "like",
-			});
-			await notification.save();
+			await notify({ from: userId, to: post.user, type: "like" });
 
 			const updatedLikes = post.likes;
 			res.status(200).json(updatedLikes);
@@ -423,12 +413,7 @@ export const repostUnrepost = async (req, res) => {
 
 		// notify the post owner (not when reposting your own post)
 		if (post.user.toString() !== userId.toString()) {
-			const notification = new Notification({
-				from: userId,
-				to: post.user,
-				type: "repost",
-			});
-			await notification.save();
+			await notify({ from: userId, to: post.user, type: "repost" });
 		}
 
 		res.status(200).json(post.reposts);
@@ -549,7 +534,7 @@ export const helpfulUnhelpful = async (req, res) => {
 		await post.save();
 
 		if (post.user.toString() !== userId.toString()) {
-			await new Notification({ from: userId, to: post.user, type: "helpful" }).save();
+			await notify({ from: userId, to: post.user, type: "helpful" });
 		}
 		res.status(200).json(post.helpful);
 	} catch (error) {
@@ -579,7 +564,7 @@ export const helpfulUnhelpfulComment = async (req, res) => {
 		await post.save();
 
 		if (!already && comment.user.toString() !== userId.toString()) {
-			await new Notification({ from: userId, to: comment.user, type: "helpful" }).save();
+			await notify({ from: userId, to: comment.user, type: "helpful" });
 		}
 		res.status(200).json(comment.helpful);
 	} catch (error) {
@@ -788,7 +773,7 @@ export const acceptAnswer = async (req, res) => {
 		await post.save();
 
 		if (!same && comment.user.toString() !== userId.toString()) {
-			await new Notification({ from: userId, to: comment.user, type: "accepted" }).save();
+			await notify({ from: userId, to: comment.user, type: "accepted" });
 		}
 		res.status(200).json({ acceptedComment: post.acceptedComment ?? null });
 	} catch (error) {

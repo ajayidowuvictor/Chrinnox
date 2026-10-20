@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 import User from "../models/user.model.js";
+import { NOTIF_TYPES } from "../lib/utils/notify.js";
 
 const PUBLIC_FIELDS = "username fullName profileImg";
 const AUDIENCE = ["everyone", "following", "nobody"];
@@ -126,6 +127,21 @@ export const updatePrivacySettings = async (req, res) => {
 		res.status(200).json({ settings: me.settings });
 	} catch (error) {
 		console.log("Error in updatePrivacySettings: ", error.message);
+		res.status(500).json({ error: "Internal Server Error" });
+	}
+};
+
+export const updateNotificationPrefs = async (req, res) => {
+	try {
+		const update = {};
+		for (const type of NOTIF_TYPES) {
+			if (typeof req.body[type] === "boolean") update[`notifPrefs.${type}`] = req.body[type];
+		}
+		if (Object.keys(update).length === 0) return res.status(400).json({ error: "Nothing to change" });
+		const user = await User.findByIdAndUpdate(req.user._id, { $set: update }, { new: true }).select("notifPrefs");
+		res.status(200).json(user.notifPrefs);
+	} catch (error) {
+		console.log("Error in updateNotificationPrefs: ", error.message);
 		res.status(500).json({ error: "Internal Server Error" });
 	}
 };

@@ -6,6 +6,7 @@ import {
 	muteUnmuteUser,
 	updateMutedWords,
 	updatePrivacySettings,
+	updateNotificationPrefs,
 } from "../controllers/safety.controller.js";
 import { completeOnboarding, followUnfollowUser, getSuggestedUsers, getUserProfile, searchUsers, updateUser } from "../controllers/user.controller.js";
 
@@ -16,6 +17,7 @@ router.get("/search", protectRoute, searchUsers);
 router.get("/safety", protectRoute, getSafety);
 router.post("/safety/muted-words", protectRoute, updateMutedWords);
 router.post("/safety/privacy", protectRoute, updatePrivacySettings);
+router.post("/safety/notifications", protectRoute, updateNotificationPrefs);
 router.post("/mute/:id", protectRoute, muteUnmuteUser);
 router.post("/block/:id", protectRoute, blockUnblockUser);
 router.get("/suggested", protectRoute, getSuggestedUsers);

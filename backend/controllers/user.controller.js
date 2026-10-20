@@ -2,7 +2,7 @@ import bcrypt from "bcryptjs";
 import { v2 as cloudinary } from "cloudinary";
 
 // models
-import Notification from "../models/notification.model.js";
+import { notify } from "../lib/utils/notify.js";
 import User from "../models/user.model.js";
 import { findUserByUsername, escapeRegex } from "../lib/utils/findUser.js";
 import { isBlockedBetween, getHiddenUserIds } from "../lib/utils/relations.js";
@@ -52,13 +52,7 @@ export const followUnfollowUser = async (req, res) => {
 			await User.findByIdAndUpdate(id, { $push: { followers: req.user._id } });
 			await User.findByIdAndUpdate(req.user._id, { $push: { following: id } });
 			// Send notification to the user
-			const newNotification = new Notification({
-				type: "follow",
-				from: req.user._id,
-				to: userToModify._id,
-			});
-
-			await newNotification.save();
+			await notify({ from: req.user._id, to: userToModify._id, type: "follow" });
 
 			res.status(200).json({ message: "User followed successfully" });
 		}

@@ -6,6 +6,7 @@ import { toast } from "react-hot-toast";
 import LoadingSpinner from "../../components/common/LoadingSpinner";
 import useSafetyActions from "../../hooks/useSafetyActions";
 import { canPromptInstall, isInstalled, isIos, promptInstall, subscribeInstall } from "../../utils/install";
+import { currentSubscription, disablePush, enablePush, pushSupported } from "../../utils/push";
 import { getThemePreference, setThemePreference } from "../../utils/theme";
 
 import { IoCloseSharp } from "react-icons/io5";
@@ -215,6 +216,94 @@ const InstallSection = () => {
 	);
 };
 
+const NOTIF_OPTIONS = [
+	["message", "New messages"],
+	["comment", "Replies to your posts"],
+	["like", "Likes"],
+	["repost", "Reposts"],
+	["follow", "New followers"],
+	["helpful", "Someone found your contribution helpful"],
+	["accepted", "Your reply chosen as the best answer"],
+];
+
+const NotificationsSection = () => {
+	const queryClient = useQueryClient();
+	const { data: authUser } = useQuery({ queryKey: ["authUser"] });
+	const [pushOn, setPushOn] = useState(false);
+	const [busy, setBusy] = useState(false);
+	const supported = pushSupported();
+
+	useEffect(() => {
+		let alive = true;
+		currentSubscription()
+			.then((s) => alive && setPushOn(!!s && Notification.permission === "granted"))
+			.catch(() => {});
+		return () => {
+			alive = false;
+		};
+	}, []);
+
+	const { mutate: setPref } = useMutation({
+		mutationFn: (body) => postJson("/api/users/safety/notifications", body),
+		onSuccess: (prefs) => queryClient.setQueryData(["authUser"], (old) => (old ? { ...old, notifPrefs: prefs } : old)),
+		onError: (e) => toast.error(e.message),
+	});
+
+	const togglePush = async () => {
+		setBusy(true);
+		try {
+			if (pushOn) {
+				await disablePush();
+				setPushOn(false);
+				toast.success("Phone alerts are off on this device");
+			} else {
+				await enablePush();
+				setPushOn(true);
+				toast.success("Phone alerts are on");
+			}
+		} catch (e) {
+			toast.error(e.message);
+		} finally {
+			setBusy(false);
+		}
+	};
+
+	return (
+		<Section title='Notifications' hint='Choose what you want to hear about, in the app and on your phone.'>
+			<div className='flex flex-col gap-3'>
+				{NOTIF_OPTIONS.map(([key, label]) => (
+					<label key={key} className='flex items-center justify-between gap-3 cursor-pointer'>
+						<span>{label}</span>
+						<input
+							type='checkbox'
+							className='toggle toggle-primary'
+							checked={authUser?.notifPrefs?.[key] !== false}
+							onChange={(e) => setPref({ [key]: e.target.checked })}
+						/>
+					</label>
+				))}
+			</div>
+			<div className='mt-4 pt-4 border-t border-line'>
+				<p className='font-semibold'>Phone alerts on this device</p>
+				{supported ? (
+					<>
+						<p className='text-sm text-slate-500 mb-2'>
+							Get a ping even when Chrinnox is closed. On iPhone, install the app to your home screen first.
+						</p>
+						<button className='btn btn-primary btn-sm rounded-full text-white' onClick={togglePush} disabled={busy}>
+							{busy ? "One moment..." : pushOn ? "Turn off phone alerts" : "Turn on phone alerts"}
+						</button>
+					</>
+				) : (
+					<p className='text-sm text-slate-500'>
+						This browser can&apos;t show phone alerts. On iPhone, install Chrinnox to your home screen first.
+					</p>
+				)}
+			</div>
+		</Section>
+	);
+};
+
 const SettingsPage = () => {
 	const queryClient = useQueryClient();
 	const { toggleMute, toggleBlock } = useSafetyActions();
@@ -341,6 +430,8 @@ const SettingsPage = () => {
 					emptyText="You haven't blocked anyone."
 				/>
 			</Section>
+
+			<NotificationsSection />
 
 			<InstallSection />
 

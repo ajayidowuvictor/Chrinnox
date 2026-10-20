@@ -1,6 +1,6 @@
 // Chrinnox service worker: makes the app installable and shows a friendly page when offline.
 // It never stores API responses or pages, so people always see fresh, private data.
-const VERSION = "chrinnox-v1";
+const VERSION = "chrinnox-v2";
 const SHELL = ["/offline.html", "/icons/icon-192.png", "/icons/icon-512.png"];
 
 self.addEventListener("install", (event) => {
@@ -45,4 +45,39 @@ self.addEventListener("fetch", (event) => {
 			)
 		);
 	}
+});
+
+// phone alerts
+self.addEventListener("push", (event) => {
+	let data = {};
+	try {
+		data = event.data ? event.data.json() : {};
+	} catch {
+		data = {};
+	}
+	event.waitUntil(
+		self.registration.showNotification(data.title || "Chrinnox", {
+			body: data.body || "You have a new notification",
+			icon: "/icons/icon-192.png",
+			badge: "/icons/icon-192.png",
+			tag: data.tag,
+			data: { url: data.url || "/" },
+		})
+	);
+});
+
+self.addEventListener("notificationclick", (event) => {
+	event.notification.close();
+	const url = (event.notification.data && event.notification.data.url) || "/";
+	event.waitUntil(
+		self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((list) => {
+			for (const client of list) {
+				if ("focus" in client) {
+					client.navigate(url).catch(() => {});
+					return client.focus();
+				}
+			}
+			return self.clients.openWindow(url);
+		})
+	);
 });

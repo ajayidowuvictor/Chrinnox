@@ -1,3 +1,4 @@
+import { notify } from "../lib/utils/notify.js";
 import Message from "../models/message.model.js";
 import Post from "../models/post.model.js";
 import Community from "../models/community.model.js";
@@ -145,6 +146,7 @@ export const sendMessage = async (req, res) => {
 			post: post?._id,
 			isPostShare: !!post,
 		});
+		notify({ from: me, to: other._id, type: "message" });
 		res.status(201).json(message);
 	} catch (error) {
 		console.log("Error in sendMessage controller: ", error.message);
