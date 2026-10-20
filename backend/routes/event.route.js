@@ -1,9 +1,11 @@
 import express from "express";
+import { guardIds } from "../middleware/guardIds.js";
 import { protectRoute } from "../middleware/protectRoute.js";
 import { rateLimit } from "../middleware/rateLimit.js";
 import { cancelEvent, createEvent, deleteEvent, getEvent, listEvents, rsvp } from "../controllers/event.controller.js";
 
 const router = express.Router();
+guardIds(router, "id");
 const createLimiter = rateLimit({ windowMs: 60 * 60 * 1000, max: 10, message: "You are creating events too fast. Please try again later." });
 
 router.get("/", protectRoute, listEvents);

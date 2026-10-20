@@ -6,6 +6,7 @@ import { notify } from "../lib/utils/notify.js";
 import User from "../models/user.model.js";
 import { findUserByUsername, escapeRegex } from "../lib/utils/findUser.js";
 import { isBlockedBetween, getHiddenUserIds } from "../lib/utils/relations.js";
+import { isAdmin } from "../lib/utils/admin.js";
 import { generateTokenAndSetCookie } from "../lib/utils/generateToken.js";
 import { sendVerificationEmail } from "./auth.controller.js";
 
@@ -19,7 +20,7 @@ export const getUserProfile = async (req, res) => {
 		res.status(200).json(user);
 	} catch (error) {
 		console.log("Error in getUserProfile: ", error.message);
-		res.status(500).json({ error: error.message });
+		res.status(500).json({ error: "Internal Server Error" });
 	}
 };
 
@@ -58,7 +59,7 @@ export const followUnfollowUser = async (req, res) => {
 		}
 	} catch (error) {
 		console.log("Error in followUnfollowUser: ", error.message);
-		res.status(500).json({ error: error.message });
+		res.status(500).json({ error: "Internal Server Error" });
 	}
 };
 
@@ -87,7 +88,7 @@ export const getSuggestedUsers = async (req, res) => {
 		res.status(200).json(suggestedUsers);
 	} catch (error) {
 		console.log("Error in getSuggestedUsers: ", error.message);
-		res.status(500).json({ error: error.message });
+		res.status(500).json({ error: "Internal Server Error" });
 	}
 };
 
@@ -142,6 +143,10 @@ export const updateUser = async (req, res) => {
 					.status(400)
 					.json({ error: "Username must be 3-20 characters: letters, numbers or underscore, no spaces" });
 			}
+			// an admin is named in ADMIN_USERNAMES; renaming would free that name for anyone to register
+			if (isAdmin(user)) {
+				return res.status(400).json({ error: "Admin accounts can't change username. Update ADMIN_USERNAMES first." });
+			}
 			const taken = await findUserByUsername(cleanUsername);
 			if (taken && taken._id.toString() !== user._id.toString()) {
 				return res.status(400).json({ error: "Username is already taken" });
@@ -171,8 +176,18 @@ export const updateUser = async (req, res) => {
 		if (typeof bio === "string" && bio.length > 160) {
 			return res.status(400).json({ error: "Bio can be at most 160 characters" });
 		}
-		if (typeof link === "string" && link.length > 100) {
-			return res.status(400).json({ error: "Link can be at most 100 characters" });
+		let cleanLink;
+		if (typeof link === "string") {
+			cleanLink = link.trim();
+			if (cleanLink.length > 100) {
+				return res.status(400).json({ error: "Link can be at most 100 characters" });
+			}
+			if (cleanLink) {
+				if (!/^https?:\/\//i.test(cleanLink)) cleanLink = `https://${cleanLink}`;
+				if (!/^https?:\/\/[^\s/$.?#][^\s]*\.[^\s]{2,}$/i.test(cleanLink)) {
+					return res.status(400).json({ error: "That link doesn't look right. Example: https://example.com" });
+				}
+			}
 		}
 
 		if ((!newPassword && currentPassword && !emailChanged) || (!currentPassword && newPassword)) {
@@ -220,7 +235,7 @@ export const updateUser = async (req, res) => {
 		user.username = (username && username.trim()) || user.username;
 		// an empty string clears the field; leaving it out keeps the old value
 		user.bio = typeof bio === "string" ? bio : user.bio;
-		user.link = typeof link === "string" ? link : user.link;
+		user.link = cleanLink !== undefined ? cleanLink : user.link;
 		user.profileImg = profileImg || user.profileImg;
 		user.coverImg = coverImg || user.coverImg;
 
@@ -237,6 +252,6 @@ export const updateUser = async (req, res) => {
 		return res.status(200).json(safe);
 	} catch (error) {
 		console.log("Error in updateUser: ", error.message);
-		res.status(500).json({ error: error.message });
+		res.status(500).json({ error: "Internal Server Error" });
 	}
 };

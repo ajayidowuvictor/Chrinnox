@@ -1,4 +1,5 @@
 import express from "express";
+import { guardIds } from "../middleware/guardIds.js";
 import { protectRoute } from "../middleware/protectRoute.js";
 import { rateLimit } from "../middleware/rateLimit.js";
 import {
@@ -19,6 +20,7 @@ import {
 } from "../controllers/community.controller.js";
 
 const router = express.Router();
+guardIds(router, "userId", "postId");
 
 const createLimiter = rateLimit({
 	windowMs: 60 * 60 * 1000,

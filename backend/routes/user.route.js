@@ -1,4 +1,5 @@
 import express from "express";
+import { guardIds } from "../middleware/guardIds.js";
 import { protectRoute } from "../middleware/protectRoute.js";
 import {
 	blockUnblockUser,
@@ -11,6 +12,7 @@ import {
 import { completeOnboarding, followUnfollowUser, getSuggestedUsers, getUserProfile, searchUsers, updateUser } from "../controllers/user.controller.js";
 
 const router = express.Router();
+guardIds(router, "id");
 
 router.get("/profile/:username", protectRoute, getUserProfile);
 router.get("/search", protectRoute, searchUsers);

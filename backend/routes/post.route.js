@@ -1,4 +1,5 @@
 import express from "express";
+import { guardIds } from "../middleware/guardIds.js";
 import { protectRoute } from "../middleware/protectRoute.js";
 import { rateLimit } from "../middleware/rateLimit.js";
 import {
@@ -24,6 +25,7 @@ import {
 } from "../controllers/post.controller.js";
 
 const router = express.Router();
+guardIds(router, "id", "postId", "commentId");
 
 router.get("/feed", protectRoute, getFeed);
 router.get("/opportunities", protectRoute, getOpportunities);

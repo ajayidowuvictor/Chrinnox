@@ -26,6 +26,16 @@ cloudinary.config({
 	api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
+// refuse to start with missing or weak secrets rather than run insecurely
+if (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 16) {
+	console.error("JWT_SECRET is missing or too short (use at least 16 random characters).");
+	process.exit(1);
+}
+if (!process.env.MONGO_URI) {
+	console.error("MONGO_URI is missing.");
+	process.exit(1);
+}
+
 const app = express();
 app.set("trust proxy", 1); // needed so secure cookies work behind hosting proxies (Render, Railway, etc.)
 const PORT = process.env.PORT || 5000;
@@ -33,10 +43,34 @@ const __dirname = path.resolve();
 
 // basic security headers
 app.disable("x-powered-by");
+
+// What the browser is allowed to load. Set CSP_REPORT_ONLY=1 on the host to log problems instead of blocking.
+const CSP = [
+	"default-src 'self'",
+	"script-src 'self'",
+	"style-src 'self' 'unsafe-inline'",
+	"img-src 'self' data: blob: https:",
+	"media-src 'self' https:",
+	"font-src 'self' data:",
+	"connect-src 'self'",
+	"manifest-src 'self'",
+	"worker-src 'self'",
+	"object-src 'none'",
+	"base-uri 'self'",
+	"form-action 'self'",
+	"frame-ancestors 'self'",
+].join("; ");
+
 app.use((req, res, next) => {
 	res.set("X-Content-Type-Options", "nosniff");
 	res.set("X-Frame-Options", "SAMEORIGIN");
 	res.set("Referrer-Policy", "strict-origin-when-cross-origin");
+	res.set("Permissions-Policy", "camera=(), microphone=(), geolocation=(), payment=()");
+	res.set("Cross-Origin-Opener-Policy", "same-origin");
+	if (process.env.NODE_ENV === "production") {
+		res.set("Strict-Transport-Security", "max-age=15552000");
+		res.set(process.env.CSP_REPORT_ONLY === "1" ? "Content-Security-Policy-Report-Only" : "Content-Security-Policy", CSP);
+	}
 	next();
 });
 
