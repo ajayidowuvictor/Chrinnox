@@ -15,6 +15,8 @@ import ForgotPasswordPage from "./pages/auth/recover/ForgotPasswordPage";
 import ResetPasswordPage from "./pages/auth/recover/ResetPasswordPage";
 import VerifyEmailPage from "./pages/auth/recover/VerifyEmailPage";
 import WelcomePage from "./pages/welcome/WelcomePage";
+import EventPage from "./pages/events/EventPage";
+import CreateEventPage from "./pages/events/CreateEventPage";
 import AdminPage from "./pages/admin/AdminPage";
 import CommunityPage from "./pages/community/CommunityPage";
 import CreateCommunityPage from "./pages/community/CreateCommunityPage";
@@ -80,6 +82,8 @@ function App() {
 				<Route path='/c/:slug' element={authUser ? <CommunityPage /> : <Navigate to='/login' />} />
 				<Route path='/communities/new' element={authUser ? <CreateCommunityPage /> : <Navigate to='/login' />} />
 				<Route path='/welcome' element={authUser ? <WelcomePage /> : <Navigate to='/login' />} />
+				<Route path='/events/new' element={authUser ? <CreateEventPage /> : <Navigate to='/login' />} />
+				<Route path='/events/:id' element={authUser ? <EventPage /> : <Navigate to='/login' />} />
 				<Route path='/admin' element={authUser ? <AdminPage /> : <Navigate to='/login' />} />
 				<Route path='/settings' element={authUser ? <SettingsPage /> : <Navigate to='/login' />} />
 				<Route path='/search' element={authUser ? <SearchPage /> : <Navigate to='/login' />} />

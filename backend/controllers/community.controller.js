@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 import Community from "../models/community.model.js";
 import Post from "../models/post.model.js";
+import Event from "../models/event.model.js";
 import User from "../models/user.model.js";
 import { COMMUNITY_CATEGORIES } from "../lib/constants.js";
 import { escapeRegex } from "../lib/utils/findUser.js";
@@ -334,6 +335,7 @@ export const deleteCommunity = async (req, res) => {
 		}
 		// the community's posts are deleted with it
 		await Post.deleteMany({ community: community._id });
+		await Event.deleteMany({ community: community._id });
 		await Community.deleteOne({ _id: community._id });
 		res.status(200).json({ message: "Community deleted" });
 	} catch (error) {

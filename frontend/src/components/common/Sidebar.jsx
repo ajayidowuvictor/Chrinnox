@@ -1,7 +1,7 @@
 import Logo from "../svgs/Logo";
 
 import { MdHomeFilled } from "react-icons/md";
-import { IoNotifications, IoMail, IoSearch, IoSettingsSharp, IoPeople, IoBriefcase, IoShieldCheckmark } from "react-icons/io5";
+import { IoNotifications, IoMail, IoSearch, IoSettingsSharp, IoPeople, IoBriefcase, IoCalendar, IoShieldCheckmark } from "react-icons/io5";
 import { FaUser, FaBookmark } from "react-icons/fa";
 import { Link, NavLink, useLocation } from "react-router-dom";
 import { BiLogOut } from "react-icons/bi";
@@ -76,7 +76,7 @@ const Sidebar = () => {
 				<Link to='/' className='flex justify-center md:justify-start'>
 					<Logo className='px-2 w-12 h-12 rounded-full text-base-content hover:bg-hoverbg' />
 				</Link>
-				<ul className='flex flex-col gap-3 mt-4'>
+				<ul className='flex flex-col gap-1 mt-2 min-h-0 overflow-y-auto'>
 					<li className='flex justify-center md:justify-start'>
 						<Link
 							to='/'
@@ -102,6 +102,15 @@ const Sidebar = () => {
 						>
 							<IoBriefcase className='w-6 h-6' />
 							<span className='text-lg hidden md:block'>Opportunities</span>
+						</Link>
+					</li>
+					<li className='flex justify-center md:justify-start'>
+						<Link
+							to='/search?tab=events'
+							className='flex gap-3 items-center hover:bg-hoverbg transition-all rounded-full duration-300 py-2 pl-2 pr-4 max-w-fit cursor-pointer'
+						>
+							<IoCalendar className='w-6 h-6' />
+							<span className='text-lg hidden md:block'>Events</span>
 						</Link>
 					</li>
 					<li className='flex justify-center md:justify-start'>

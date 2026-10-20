@@ -5,6 +5,7 @@ import toast from "react-hot-toast";
 
 import Posts from "../../components/common/Posts";
 import CreatePost from "../home/CreatePost";
+import EventsList from "../../components/common/EventsList";
 import LoadingSpinner from "../../components/common/LoadingSpinner";
 
 import { FaArrowLeft } from "react-icons/fa6";
@@ -107,6 +108,7 @@ const CommunityPage = () => {
 
 	const tabs = [
 		["posts", "Posts"],
+		["events", "Events"],
 		["members", "Members"],
 		...(isMod ? [["requests", `Requests${c.pendingCount ? ` (${c.pendingCount})` : ""}`]] : []),
 		["about", "About"],
@@ -169,6 +171,22 @@ const CommunityPage = () => {
 					<p className='text-center p-8 text-slate-500'>
 						This is a private community. {c.role === "pending" ? "Your request is waiting for approval." : "Request to join to see its posts."}
 					</p>
+				))}
+
+			{tab === "events" &&
+				(canRead ? (
+					<>
+						{isMember && (
+							<div className='p-3 border-b border-line flex justify-end'>
+								<Link to={`/events/new?community=${slug}`} className='btn btn-primary btn-sm rounded-full text-white'>
+									Host an event
+								</Link>
+							</div>
+						)}
+						<EventsList community={slug} />
+					</>
+				) : (
+					<p className='text-center p-8 text-slate-500'>Only members can see this community&apos;s events.</p>
 				))}
 
 			{tab === "members" &&

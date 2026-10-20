@@ -6,6 +6,7 @@ import LoadingSpinner from "../../components/common/LoadingSpinner";
 import TrendingTopics from "../../components/common/TrendingTopics";
 import Posts from "../../components/common/Posts";
 import CommunitiesTab from "./CommunitiesTab";
+import EventsTab from "./EventsTab";
 import { OPPORTUNITY_KINDS } from "../home/CreatePost";
 
 import { IoSearch } from "react-icons/io5";
@@ -13,6 +14,7 @@ import { IoSearch } from "react-icons/io5";
 const TABS = [
 	{ id: "people", label: "People" },
 	{ id: "opportunities", label: "Opportunities" },
+	{ id: "events", label: "Events" },
 	{ id: "communities", label: "Communities" },
 ];
 
@@ -94,6 +96,7 @@ const SearchPage = () => {
 				))}
 			</div>
 			{tab === "opportunities" && <OpportunitiesTab />}
+			{tab === "events" && <EventsTab />}
 			{tab === "communities" && <CommunitiesTab />}
 			{tab === "people" && (
 			<>
