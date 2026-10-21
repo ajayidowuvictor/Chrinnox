@@ -1,4 +1,5 @@
 import { notify } from "../lib/utils/notify.js";
+import { PUBLIC_USER } from "../lib/utils/publicUser.js";
 import Post from "../models/post.model.js";
 import User from "../models/user.model.js";
 import { findUserByUsername } from "../lib/utils/findUser.js";
@@ -251,11 +252,11 @@ export const getAllPosts = async (req, res) => {
 			.limit(FEED_LIMIT)
 			.populate({
 				path: "user",
-				select: "-password",
+				select: PUBLIC_USER,
 			})
 			.populate({
 				path: "comments.user",
-				select: "-password",
+				select: PUBLIC_USER,
 			})
 			.populate({ path: "community", select: "name slug owner moderators privacy" });
 
@@ -282,11 +283,11 @@ export const getLikedPosts = async (req, res) => {
 		})
 			.populate({
 				path: "user",
-				select: "-password",
+				select: PUBLIC_USER,
 			})
 			.populate({
 				path: "comments.user",
-				select: "-password",
+				select: PUBLIC_USER,
 			})
 			.populate({ path: "community", select: "name slug owner moderators privacy" });
 
@@ -317,11 +318,11 @@ export const getFollowingPosts = async (req, res) => {
 			.limit(FEED_LIMIT)
 			.populate({
 				path: "user",
-				select: "-password",
+				select: PUBLIC_USER,
 			})
 			.populate({
 				path: "comments.user",
-				select: "-password",
+				select: PUBLIC_USER,
 			})
 			.populate({ path: "community", select: "name slug owner moderators privacy" });
 
@@ -367,11 +368,11 @@ export const getUserPosts = async (req, res) => {
 			.limit(FEED_LIMIT)
 			.populate({
 				path: "user",
-				select: "-password",
+				select: PUBLIC_USER,
 			})
 			.populate({
 				path: "comments.user",
-				select: "-password",
+				select: PUBLIC_USER,
 			})
 			.populate({ path: "community", select: "name slug owner moderators privacy" });
 
@@ -461,11 +462,11 @@ export const getBookmarkedPosts = async (req, res) => {
 		})
 			.populate({
 				path: "user",
-				select: "-password",
+				select: PUBLIC_USER,
 			})
 			.populate({
 				path: "comments.user",
-				select: "-password",
+				select: PUBLIC_USER,
 			})
 			.populate({ path: "community", select: "name slug owner moderators privacy" });
 
@@ -490,11 +491,11 @@ export const getPostById = async (req, res) => {
 		const post = await Post.findById(id)
 			.populate({
 				path: "user",
-				select: "-password",
+				select: PUBLIC_USER,
 			})
 			.populate({
 				path: "comments.user",
-				select: "-password",
+				select: PUBLIC_USER,
 			})
 			.populate({ path: "community", select: "name slug owner moderators privacy" });
 
@@ -580,8 +581,8 @@ const FEED_MODES = ["forYou", "following", "latest", "discussions", "topics", "t
 
 const populateFeed = (query) =>
 	query
-		.populate({ path: "user", select: "-password" })
-		.populate({ path: "comments.user", select: "-password" })
+		.populate({ path: "user", select: PUBLIC_USER })
+		.populate({ path: "comments.user", select: PUBLIC_USER })
 		.populate({ path: "community", select: "name slug owner moderators privacy" });
 
 export const getFeed = async (req, res) => {

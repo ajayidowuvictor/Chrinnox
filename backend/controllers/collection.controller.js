@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import { PUBLIC_USER } from "../lib/utils/publicUser.js";
 import Collection from "../models/collection.model.js";
 import Post from "../models/post.model.js";
 import User from "../models/user.model.js";
@@ -124,8 +125,8 @@ export const getCollectionPosts = async (req, res) => {
 		const posts = await Post.find({
 			$and: [{ _id: { $in: c.posts } }, await buildCommunityVisibility(req.user._id)],
 		})
-			.populate({ path: "user", select: "-password" })
-			.populate({ path: "comments.user", select: "-password" })
+			.populate({ path: "user", select: PUBLIC_USER })
+			.populate({ path: "comments.user", select: PUBLIC_USER })
 			.populate({ path: "community", select: "name slug owner moderators privacy" });
 
 		const order = c.posts.map((id) => id.toString());

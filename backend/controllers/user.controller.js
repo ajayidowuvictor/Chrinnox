@@ -6,6 +6,7 @@ import { notify } from "../lib/utils/notify.js";
 import User from "../models/user.model.js";
 import { findUserByUsername, escapeRegex } from "../lib/utils/findUser.js";
 import { isBlockedBetween, getHiddenUserIds } from "../lib/utils/relations.js";
+import { PUBLIC_USER } from "../lib/utils/publicUser.js";
 import { isAdmin } from "../lib/utils/admin.js";
 import { generateTokenAndSetCookie } from "../lib/utils/generateToken.js";
 import { sendVerificationEmail } from "./auth.controller.js";
@@ -14,7 +15,7 @@ export const getUserProfile = async (req, res) => {
 	const { username } = req.params;
 
 	try {
-		const user = await findUserByUsername(username).select("-password");
+		const user = await findUserByUsername(username).select(PUBLIC_USER);
 		if (!user) return res.status(404).json({ message: "User not found" });
 
 		res.status(200).json(user);
@@ -77,13 +78,12 @@ export const getSuggestedUsers = async (req, res) => {
 				},
 			},
 			{ $sample: { size: 10 } },
+			{ $project: { username: 1, fullName: 1, profileImg: 1, bio: 1 } },
 		]);
 
 		// 1,2,3,4,5,6,
 		const filteredUsers = users.filter((user) => !usersFollowedByMe.following.includes(user._id));
 		const suggestedUsers = filteredUsers.slice(0, 4);
-
-		suggestedUsers.forEach((user) => (user.password = null));
 
 		res.status(200).json(suggestedUsers);
 	} catch (error) {
